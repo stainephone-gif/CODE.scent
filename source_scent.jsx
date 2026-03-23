@@ -256,7 +256,9 @@ export default function App() {
   return (
     <div style={{ "--mono": "'JetBrains Mono',ui-monospace,'Fira Code',monospace", "--serif": "'Cormorant Garamond','Georgia',serif", minHeight: "100vh", background: "#050505", color: "#ddd", fontFamily: "var(--serif)" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
+        @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:300 600;src:local('JetBrains Mono'),local('JetBrainsMono-Regular'),local('JetBrainsMono')}
+        @font-face{font-family:'Cormorant Garamond';font-style:normal;font-weight:300 600;src:local('Cormorant Garamond'),local('CormorantGaramond-Regular'),local('CormorantGaramond')}
+        @font-face{font-family:'Cormorant Garamond';font-style:italic;font-weight:300 600;src:local('Cormorant Garamond Italic'),local('CormorantGaramond-Italic')}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes glowBtn{0%,100%{box-shadow:0 0 10px var(--gc,transparent)}50%{box-shadow:0 0 25px var(--gc,transparent)}}
