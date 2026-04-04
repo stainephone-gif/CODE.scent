@@ -423,9 +423,9 @@ function VSlider({ value, onChange, color, label, icon, note, disabled, glow, co
   }, [calc]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", minWidth: "68px", opacity: disabled ? 0.2 : 1 }}>
+    <div className="sc-slider-col" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", minWidth: "68px", opacity: disabled ? 0.2 : 1 }}>
       <span style={{ fontSize: "16px" }}>{icon}</span>
-      <div ref={ref} onMouseDown={(e) => { drag.current = true; calc(e); }} onTouchStart={(e) => { drag.current = true; calc(e); }}
+      <div className="sc-slider-track" ref={ref} onMouseDown={(e) => { drag.current = true; calc(e); }} onTouchStart={(e) => { drag.current = true; calc(e); }}
         style={{ width: "28px", height: "130px", background: "#0d0d0d", borderRadius: "14px", position: "relative", cursor: disabled ? "not-allowed" : "ns-resize", border: `1px solid ${value > 0 ? color + "33" : "#151515"}`, touchAction: "none" }}>
         <div style={{ position: "absolute", bottom: "3px", left: "3px", right: "3px", height: `calc(${value}% - 6px)`, minHeight: 0, background: `linear-gradient(to top, ${color}18, ${color}88)`, borderRadius: "12px", transition: drag.current ? "none" : "height .35s ease" }} />
         <div style={{ position: "absolute", left: "50%", bottom: `calc(${value}% - 10px)`, transform: "translateX(-50%)", width: "20px", height: "20px", borderRadius: "50%", background: `radial-gradient(circle at 35% 35%, ${color}, ${color}66)`, border: "2px solid #070707", boxShadow: glow && value > 0 ? `0 0 12px ${color}55` : "none", transition: drag.current ? "none" : "bottom .35s ease, box-shadow .4s" }} />
@@ -569,15 +569,39 @@ export default function App() {
         @keyframes glowBtn{0%,100%{box-shadow:0 0 10px var(--gc,transparent)}50%{box-shadow:0 0 25px var(--gc,transparent)}}
         @keyframes rise{0%{opacity:0;transform:translateY(0)}12%{opacity:.4}100%{opacity:0;transform:translateY(-60px) scale(.1)}}
         *{box-sizing:border-box;margin:0}::-webkit-scrollbar{width:3px;height:3px}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:2px}textarea:focus,input:focus{outline:none}
+        @media(max-width:900px){
+          .sc-header{flex-direction:column!important;align-items:flex-start!important;gap:8px!important}
+          .sc-header-right{width:100%;justify-content:space-between!important;flex-wrap:wrap!important}
+          .sc-main-grid{grid-template-columns:1fr!important}
+          .sc-lang-cards{grid-template-columns:repeat(3,1fr)!important;gap:4px!important}
+          .sc-lang-cards button{padding:8px 6px!important}
+          .sc-mod-grid{grid-template-columns:repeat(3,1fr)!important}
+          .sc-code-pre{max-height:160px!important;font-size:9px!important}
+          .sc-mixer{min-width:0!important}
+          .sc-philosophy{font-size:11px!important}
+          .sc-cfg-wrap{flex-direction:column!important;gap:6px!important}
+          .sc-cfg-wrap input{width:100%!important;min-width:0!important}
+          .sc-slider-row{gap:4px!important}
+          .sc-slider-col{min-width:52px!important}
+          .sc-slider-track{height:100px!important}
+          .sc-serial-btns{flex-wrap:wrap!important}
+          .sc-diffuse-btn{font-size:14px!important;padding:0!important}
+          .sc-diffuse-btn>div{padding:16px!important}
+        }
+        @media(max-width:600px){
+          .sc-lang-cards{grid-template-columns:1fr!important}
+          .sc-mod-grid{grid-template-columns:1fr!important}
+          .sc-slider-track{height:80px!important}
+        }
       `}</style>
 
       {/* HEADER */}
-      <header style={{ padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <header className="sc-header" style={{ padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ fontFamily: "var(--serif)", fontSize: "22px", fontWeight: 300, letterSpacing: "3px", color: lang ? lang.color : "#888", transition: "color .5s" }}>CODE.scent</h1>
           <p style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#999", letterSpacing: "2.5px" }}>CODE → AROMA · 6CH · {proto.toUpperCase()}</p>
         </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <div className="sc-header-right" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <div style={{ display: "flex", borderRadius: "8px", overflow: "hidden", border: "1px solid #282828" }}>
             {["mqtt", "ble", "serial"].map((p) => (
               <button key={p} onClick={() => setProto(p)} style={{ background: proto === p ? "#151515" : "#080808", border: "none", padding: "3px 8px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: proto === p ? "#777" : "#2a2a2a", letterSpacing: "1px" }}>{p === "serial" ? "USB" : p.toUpperCase()}</button>
@@ -599,7 +623,7 @@ export default function App() {
       {showCfg && (
         <div style={{ margin: "10px 16px", padding: "10px", background: "#131313", border: "1px solid #282828", borderRadius: "6px", animation: "fadeIn .25s" }}>
           {proto === "mqtt" ? (
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div className="sc-cfg-wrap" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
               {[{ l: "Host (WebSocket)", k: "host", w: "140px" }, { l: "WS Port", k: "port", w: "55px" }, { l: "Topic", k: "topic", w: "155px" }].map((f) => (
                 <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#bbb", marginBottom: "2px" }}>{f.l}</div>
                 <input value={mqttCfg[f.k]} onChange={(e) => setMqttCfg({ ...mqttCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
@@ -609,7 +633,7 @@ export default function App() {
               </button>
             </div>
           ) : proto === "ble" ? (
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div className="sc-cfg-wrap" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
               {[{ l: "Device", k: "device", w: "150px" }, { l: "Service UUID", k: "service", w: "80px" }, { l: "Char UUID", k: "char", w: "80px" }].map((f) => (
                 <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#bbb", marginBottom: "2px" }}>{f.l}</div>
                 <input value={bleCfg[f.k]} onChange={(e) => setBleCfg({ ...bleCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
@@ -619,7 +643,7 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div className="sc-cfg-wrap" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
               {[{ l: "Baud Rate", k: "baudRate", w: "80px" }].map((f) => (
                 <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#bbb", marginBottom: "2px" }}>{f.l}</div>
                 <input value={serialCfg[f.k]} onChange={(e) => setSerialCfg({ ...serialCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
@@ -653,7 +677,7 @@ export default function App() {
           {/* SERIAL TEST CONTROLS */}
           {proto === "serial" && isConnected && (
             <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px" }}>
-              <div style={{ display: "flex", gap: "6px" }}>
+              <div className="sc-serial-btns" style={{ display: "flex", gap: "6px" }}>
                 <button onClick={() => serialConn.write("h")} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#999", letterSpacing: "1px" }}>HELP</button>
                 <button onClick={() => serialConn.write("r")} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#999", letterSpacing: "1px" }}>RESET</button>
                 <button onClick={() => serialConn.write("f256")} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#30a040", letterSpacing: "1px" }}>FAN 50%</button>
@@ -670,7 +694,7 @@ export default function App() {
       )}
 
       {/* LANGUAGE CARDS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px", padding: "12px 16px" }}>
+      <div className="sc-lang-cards" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px", padding: "12px 16px" }}>
         {Object.entries(LANGS).map(([k, l]) => {
           const on = sel === k;
           return (
@@ -691,7 +715,7 @@ export default function App() {
       {lang && (
         <div style={{ padding: "0 16px 60px", animation: "fadeIn .35s" }}>
           <div style={{ display: "flex", gap: "8px", alignItems: "baseline", marginBottom: "10px", flexWrap: "wrap" }}>
-            <span style={{ fontFamily: "var(--serif)", fontSize: "13px", fontWeight: 300, fontStyle: "italic", color: "#aaa" }}>{lang.philosophy}</span>
+            <span className="sc-philosophy" style={{ fontFamily: "var(--serif)", fontSize: "13px", fontWeight: 300, fontStyle: "italic", color: "#aaa" }}>{lang.philosophy}</span>
             <span style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#999" }}>{lang.author}</span>
           </div>
 
@@ -701,11 +725,11 @@ export default function App() {
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "12px" }}>
+          <div className="sc-main-grid" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "12px" }}>
             {/* LEFT */}
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", minWidth: 0 }}>
               {mode === "sample" ? (
-                <pre style={{ background: "#111", border: `1px solid ${lang.color}12`, borderRadius: "6px", padding: "11px", fontFamily: "var(--mono)", fontSize: "10px", lineHeight: "1.6", color: "#aaa", overflowX: "auto", overflowY: "auto", maxHeight: "260px", margin: 0, position: "relative" }}>
+                <pre className="sc-code-pre" style={{ background: "#111", border: `1px solid ${lang.color}12`, borderRadius: "6px", padding: "11px", fontFamily: "var(--mono)", fontSize: "10px", lineHeight: "1.6", color: "#aaa", overflowX: "auto", overflowY: "auto", maxHeight: "260px", margin: 0, position: "relative" }}>
                   <span style={{ position: "absolute", top: "4px", right: "8px", fontSize: "7px", color: lang.color + "33", letterSpacing: "1.5px" }}>{lang.ext}</span>
                   {lang.sample}
                 </pre>
@@ -720,7 +744,7 @@ export default function App() {
               {analysis && (
                 <div style={{ animation: "fadeIn .25s" }}>
                   <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#aaa", letterSpacing: "2px", marginBottom: "5px" }}>МОДУЛЯЦИЯ ±20%</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+                  <div className="sc-mod-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
                     {[
                       { label: "«Воздух»", sub: "→ верхняя ↑", val: analysis.modulation.air, detail: `${analysis.metrics.comments} комм · ${analysis.metrics.emptyLines} пустых` },
                       { label: "«Сложность»", sub: "→ все ноты ↑", val: analysis.modulation.complexity, detail: `глуб ${analysis.metrics.maxDepth} · ${analysis.metrics.branches} ветвл` },
@@ -756,10 +780,10 @@ export default function App() {
             </div>
 
             {/* RIGHT: MIXER */}
-            <div style={{ background: "#111", border: `1px solid ${lang.color}12`, borderRadius: "7px", padding: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div className="sc-mixer" style={{ background: "#111", border: `1px solid ${lang.color}12`, borderRadius: "7px", padding: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
               <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#bbb", letterSpacing: "2px", textAlign: "center" }}>MIXER — {lang.name.toUpperCase()}</div>
 
-              <div style={{ display: "flex", justifyContent: "center", gap: "6px", position: "relative" }}>
+              <div className="sc-slider-row" style={{ display: "flex", justifyContent: "center", gap: "6px", position: "relative" }}>
                 {isDiffusing && <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>{Array.from({ length: 6 }).map((_, i) => <div key={i} style={{ position: "absolute", bottom: 0, left: `${8 + Math.random() * 84}%`, width: "3px", height: "3px", borderRadius: "50%", background: lang.color, opacity: 0, animation: `rise 2s ease-out ${i * .35}s infinite`, filter: "blur(1px)" }} />)}</div>}
                 {lang.channels.map((ch) => (
                   <VSlider key={ch.id} value={getVal(ch.id)} onChange={(v) => setOverrides((p) => ({ ...p, [ch.id]: v }))} color={lang.color} label={ch.scent} icon={ch.icon} note={ch.note} code={ch.code} glow={isDiffusing} />
@@ -775,7 +799,7 @@ export default function App() {
                 </div>
               )}
 
-              <button onClick={handleDiffuse} style={{ background: isDiffusing ? lang.color + "12" : "#0c0c0c", border: `2px solid ${isDiffusing ? lang.color : "#2a2a2a"}`, borderRadius: "7px", padding: "0", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "12px", fontWeight: 500, color: isDiffusing ? lang.color : "#555", letterSpacing: "4px", transition: "all .4s", "--gc": isDiffusing ? lang.color + "40" : "transparent", animation: isDiffusing ? "glowBtn 2s infinite" : "none", position: "relative", overflow: "hidden" }}>
+              <button className="sc-diffuse-btn" onClick={handleDiffuse} style={{ background: isDiffusing ? lang.color + "12" : "#0c0c0c", border: `2px solid ${isDiffusing ? lang.color : "#2a2a2a"}`, borderRadius: "7px", padding: "0", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "12px", fontWeight: 500, color: isDiffusing ? lang.color : "#555", letterSpacing: "4px", transition: "all .4s", "--gc": isDiffusing ? lang.color + "40" : "transparent", animation: isDiffusing ? "glowBtn 2s infinite" : "none", position: "relative", overflow: "hidden" }}>
                 {isDiffusing && <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: `${(diffuseTimer / DIFFUSE_DURATION) * 100}%`, background: lang.color + "18", transition: "width 1s linear" }} />}
                 <div style={{ position: "relative", padding: "13px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                   <span>{isDiffusing ? "■ STOP" : "▶ DIFFUSE"}</span>
