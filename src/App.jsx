@@ -301,16 +301,22 @@ function useSerialConnection() {
     if (!port.readable) return;
     readLoopRef.current = true;
     const decoder = new TextDecoderStream();
-    const readableStream = port.readable.pipeTo(decoder.writable);
+    port.readable.pipeTo(decoder.writable).catch(() => {});
     const reader = decoder.readable.getReader();
     readerRef.current = reader;
+    let lineBuf = "";
     try {
       while (readLoopRef.current) {
         const { value, done } = await reader.read();
         if (done) break;
         if (value) {
-          const lines = value.split("\n").filter((l) => l.trim());
-          lines.forEach((line) => appendLog({ dir: "rx", text: line.trim() }));
+          lineBuf += value;
+          const parts = lineBuf.split("\n");
+          lineBuf = parts.pop();
+          parts.forEach((line) => {
+            const trimmed = line.replace(/\r/g, "").trim();
+            if (trimmed) appendLog({ dir: "rx", text: trimmed });
+          });
         }
       }
     } catch (err) {
@@ -318,6 +324,7 @@ function useSerialConnection() {
         appendLog({ dir: "sys", text: `Read error: ${err.message}` });
       }
     } finally {
+      if (lineBuf.trim()) appendLog({ dir: "rx", text: lineBuf.trim() });
       try { reader.releaseLock(); } catch (_) {}
       readerRef.current = null;
     }
@@ -427,6 +434,7 @@ export default function App() {
   const [mqttCfg, setMqttCfg] = useState({ host: "192.168.1.100", port: "9001", topic: "sensorylab/ctrl" });
   const [bleCfg, setBleCfg] = useState({ device: "SensoryLab-6CH", service: "ffe0", char: "ffe1" });
   const [serialCfg, setSerialCfg] = useState({ baudRate: "115200" });
+  const [serialCmd, setSerialCmd] = useState("");
   const [showCfg, setShowCfg] = useState(false);
 
   const mqttConn = useMqttConnection();
@@ -597,12 +605,19 @@ export default function App() {
             </div>
           )}
 
-          {/* TEST PING BUTTON */}
+          {/* SERIAL TEST CONTROLS */}
           {proto === "serial" && isConnected && (
-            <div style={{ marginTop: "6px", display: "flex", gap: "6px" }}>
-              <button onClick={() => serialConn.write("PING")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>PING</button>
-              <button onClick={() => serialConn.write("CH1:50;CH2:50;CH3:50;CH4:50;CH5:50;CH6:50")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>TEST 50%</button>
-              <button onClick={() => serialConn.write("CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>ALL OFF</button>
+            <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button onClick={() => serialConn.write("PING")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>PING</button>
+                <button onClick={() => serialConn.write("help")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>HELP</button>
+                <button onClick={() => serialConn.write("status")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>STATUS</button>
+                <button onClick={() => serialConn.write("CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>ALL OFF</button>
+              </div>
+              <div style={{ display: "flex", gap: "4px" }}>
+                <input value={serialCmd} onChange={(e) => setSerialCmd(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && serialCmd.trim()) { serialConn.write(serialCmd.trim()); setSerialCmd(""); } }} placeholder="Custom command..." style={{ flex: 1, background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 6px", color: "#777", fontFamily: "var(--mono)", fontSize: "9px" }} />
+                <button onClick={() => { if (serialCmd.trim()) { serialConn.write(serialCmd.trim()); setSerialCmd(""); } }} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 8px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555" }}>SEND</button>
+              </div>
             </div>
           )}
         </div>
