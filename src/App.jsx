@@ -5,7 +5,7 @@ import mqtt from "mqtt";
 // source.scent v0.5
 // 3 languages · 6 channels · SensoryLab 6ch + NeuroAir
 // Python(2) + FORTRAN I(1) + CODE SMELL(1) + COBOL(2)
-// MQTT (WebSocket) + Web Bluetooth
+// MQTT (WebSocket) + Web Bluetooth + Web Serial (USB)
 // ═══════════════════════════════════════════════════════════════
 
 const LANGS = {
@@ -280,6 +280,57 @@ function useBleConnection() {
   return { status, error, connect, disconnect, write };
 }
 
+function useSerialConnection() {
+  const portRef = useRef(null);
+  const writerRef = useRef(null);
+  const [status, setStatus] = useState(CONN.disconnected);
+  const [error, setError] = useState("");
+
+  const connect = useCallback(async (cfg) => {
+    if (!navigator.serial) { setError("Web Serial not supported. Use Chrome/Edge."); setStatus(CONN.error); return; }
+    try {
+      setStatus(CONN.connecting); setError("");
+      const port = await navigator.serial.requestPort();
+      await port.open({ baudRate: parseInt(cfg.baudRate) || 115200 });
+      portRef.current = port;
+      const writer = port.writable.getWriter();
+      writerRef.current = writer;
+      setStatus(CONN.connected);
+    } catch (err) {
+      if (err.name === "NotFoundError") { setError("No port selected"); }
+      else { setError(err.message || "Serial error"); }
+      setStatus(CONN.error);
+    }
+  }, []);
+
+  const disconnect = useCallback(async () => {
+    try {
+      if (writerRef.current) { writerRef.current.releaseLock(); writerRef.current = null; }
+      if (portRef.current) { await portRef.current.close(); portRef.current = null; }
+    } catch (_) {}
+    setStatus(CONN.disconnected); setError("");
+  }, []);
+
+  const write = useCallback(async (message) => {
+    if (!writerRef.current) return false;
+    try {
+      const encoder = new TextEncoder();
+      await writerRef.current.write(encoder.encode(message + "\n"));
+      return true;
+    } catch (err) {
+      setError(err.message); setStatus(CONN.error);
+      return false;
+    }
+  }, []);
+
+  useEffect(() => () => {
+    if (writerRef.current) { try { writerRef.current.releaseLock(); } catch (_) {} }
+    if (portRef.current) { try { portRef.current.close(); } catch (_) {} }
+  }, []);
+
+  return { status, error, connect, disconnect, write };
+}
+
 // ── Vertical Slider ────────────────────────────────────────
 function VSlider({ value, onChange, color, label, icon, note, disabled, glow, code }) {
   const ref = useRef(null); const drag = useRef(false);
@@ -324,11 +375,13 @@ export default function App() {
   const [proto, setProto] = useState("mqtt");
   const [mqttCfg, setMqttCfg] = useState({ host: "192.168.1.100", port: "9001", topic: "sensorylab/ctrl" });
   const [bleCfg, setBleCfg] = useState({ device: "SensoryLab-6CH", service: "ffe0", char: "ffe1" });
+  const [serialCfg, setSerialCfg] = useState({ baudRate: "115200" });
   const [showCfg, setShowCfg] = useState(false);
 
   const mqttConn = useMqttConnection();
   const bleConn = useBleConnection();
-  const conn = proto === "mqtt" ? mqttConn : bleConn;
+  const serialConn = useSerialConnection();
+  const conn = proto === "mqtt" ? mqttConn : proto === "ble" ? bleConn : serialConn;
   const isConnected = conn.status === CONN.connected;
 
   const lang = sel ? LANGS[sel] : null;
@@ -346,15 +399,16 @@ export default function App() {
     return chs.sort((a, b) => a.id - b.id);
   }, [lang, computed, overrides, smellVal]);
 
-  const cmdStr = useMemo(() => allChannels.length ? (proto === "mqtt" ? buildMqtt(allChannels) : buildBle(allChannels)) : "", [allChannels, proto]);
+  const cmdStr = useMemo(() => allChannels.length ? (proto === "ble" ? buildBle(allChannels) : buildMqtt(allChannels)) : "", [allChannels, proto]);
 
   // Send commands to device when diffusing
   const sendCmd = useCallback(() => {
     if (!isDiffusing || !cmdStr || !isConnected) return;
     console.log(`${proto.toUpperCase()} →`, cmdStr);
     if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, cmdStr);
-    else bleConn.write(cmdStr);
-  }, [isDiffusing, cmdStr, isConnected, proto, mqttConn, bleConn, mqttCfg.topic]);
+    else if (proto === "ble") bleConn.write(cmdStr);
+    else serialConn.write(cmdStr);
+  }, [isDiffusing, cmdStr, isConnected, proto, mqttConn, bleConn, serialConn, mqttCfg.topic]);
 
   // Send on value change or connection change
   useEffect(() => { sendCmd(); }, [sendCmd]);
@@ -368,21 +422,26 @@ export default function App() {
 
   // Stop all channels on stop
   const sendStop = useCallback(() => {
-    const stopCmd = proto === "mqtt"
-      ? "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0"
-      : "1=0,2=0,3=0,4=0,5=0,6=0";
+    const stopCmd = proto === "ble"
+      ? "1=0,2=0,3=0,4=0,5=0,6=0"
+      : "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0";
     if (isConnected) {
       if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, stopCmd);
-      else bleConn.write(stopCmd);
+      else if (proto === "ble") bleConn.write(stopCmd);
+      else serialConn.write(stopCmd);
     }
   }, [proto, isConnected, mqttCfg.topic]);
 
   const handleConnect = () => {
     if (conn.status === CONN.connected || conn.status === CONN.connecting) {
       if (isDiffusing) { sendStop(); setIsDiffusing(false); setOverrides({}); }
-      if (proto === "mqtt") mqttConn.disconnect(); else bleConn.disconnect();
+      if (proto === "mqtt") mqttConn.disconnect();
+      else if (proto === "ble") bleConn.disconnect();
+      else serialConn.disconnect();
     } else {
-      if (proto === "mqtt") mqttConn.connect(mqttCfg); else bleConn.connect(bleCfg);
+      if (proto === "mqtt") mqttConn.connect(mqttCfg);
+      else if (proto === "ble") bleConn.connect(bleCfg);
+      else serialConn.connect(serialCfg);
     }
   };
 
@@ -416,8 +475,8 @@ export default function App() {
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <div style={{ display: "flex", borderRadius: "8px", overflow: "hidden", border: "1px solid #151515" }}>
-            {["mqtt", "ble"].map((p) => (
-              <button key={p} onClick={() => setProto(p)} style={{ background: proto === p ? "#151515" : "#080808", border: "none", padding: "3px 8px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: proto === p ? "#777" : "#2a2a2a", letterSpacing: "1px" }}>{p.toUpperCase()}</button>
+            {["mqtt", "ble", "serial"].map((p) => (
+              <button key={p} onClick={() => setProto(p)} style={{ background: proto === p ? "#151515" : "#080808", border: "none", padding: "3px 8px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: proto === p ? "#777" : "#2a2a2a", letterSpacing: "1px" }}>{p === "serial" ? "USB" : p.toUpperCase()}</button>
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "12px", background: isDiffusing ? (lang?.color || "#555") + "0e" : "#0a0a0a", border: `1px solid ${isDiffusing ? (lang?.color || "#555") + "40" : "#151515"}` }}>
@@ -445,11 +504,21 @@ export default function App() {
                 {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
               </button>
             </div>
-          ) : (
+          ) : proto === "ble" ? (
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
               {[{ l: "Device", k: "device", w: "150px" }, { l: "Service UUID", k: "service", w: "80px" }, { l: "Char UUID", k: "char", w: "80px" }].map((f) => (
                 <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", marginBottom: "2px" }}>{f.l}</div>
                 <input value={bleCfg[f.k]} onChange={(e) => setBleCfg({ ...bleCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "3px 6px", color: "#555", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
+              ))}
+              <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "9px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
+                {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+              {[{ l: "Baud Rate", k: "baudRate", w: "80px" }].map((f) => (
+                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", marginBottom: "2px" }}>{f.l}</div>
+                <input value={serialCfg[f.k]} onChange={(e) => setSerialCfg({ ...serialCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "3px 6px", color: "#555", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
               ))}
               <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "9px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
                 {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
