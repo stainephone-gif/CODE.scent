@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import mqtt from "mqtt";
 
 // ═══════════════════════════════════════════════════════════════
-// source.scent v0.5
+// CODE.scent v0.5
 // 3 languages · 6 channels · SensoryLab 6ch + NeuroAir
 // Python(2) + FORTRAN I(1) + CODE SMELL(1) + COBOL(2)
 // MQTT (WebSocket) + Web Bluetooth + Web Serial (USB)
@@ -448,6 +448,7 @@ export default function App() {
   const [custom, setCustom] = useState("");
   const [overrides, setOverrides] = useState({});
   const [isDiffusing, setIsDiffusing] = useState(false);
+  const [diffuseTimer, setDiffuseTimer] = useState(0);
   const [proto, setProto] = useState("mqtt");
   const [mqttCfg, setMqttCfg] = useState({ host: "192.168.1.100", port: "9001", topic: "sensorylab/ctrl" });
   const [bleCfg, setBleCfg] = useState({ device: "SensoryLab-6CH", service: "ffe0", char: "ffe1" });
@@ -515,7 +516,7 @@ export default function App() {
 
   const handleConnect = () => {
     if (conn.status === CONN.connected || conn.status === CONN.connecting) {
-      if (isDiffusing) { sendStop(); setIsDiffusing(false); setOverrides({}); }
+      if (isDiffusing) { sendStop(); setIsDiffusing(false); setDiffuseTimer(0); setOverrides({}); }
       if (proto === "mqtt") mqttConn.disconnect();
       else if (proto === "ble") bleConn.disconnect();
       else serialConn.disconnect();
@@ -526,13 +527,26 @@ export default function App() {
     }
   };
 
+  const DIFFUSE_DURATION = 10;
+
   const handleDiffuse = () => {
     if (!lang) return;
-    if (isDiffusing) { sendStop(); setIsDiffusing(false); setOverrides({}); }
-    else setIsDiffusing(true);
+    if (isDiffusing) { sendStop(); setIsDiffusing(false); setDiffuseTimer(0); setOverrides({}); }
+    else { setIsDiffusing(true); setDiffuseTimer(DIFFUSE_DURATION); }
   };
 
-  const selectLang = (k) => { if (isDiffusing) sendStop(); setIsDiffusing(false); setOverrides({}); setCustom(""); setMode("sample"); setSel(sel === k ? null : k); };
+  // Countdown timer — auto-stop when reaches 0
+  useEffect(() => {
+    if (!isDiffusing || diffuseTimer <= 0) return;
+    const t = setTimeout(() => {
+      const next = diffuseTimer - 1;
+      if (next <= 0) { sendStop(); setIsDiffusing(false); setDiffuseTimer(0); setOverrides({}); }
+      else setDiffuseTimer(next);
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [isDiffusing, diffuseTimer, sendStop]);
+
+  const selectLang = (k) => { if (isDiffusing) sendStop(); setIsDiffusing(false); setDiffuseTimer(0); setOverrides({}); setCustom(""); setMode("sample"); setSel(sel === k ? null : k); };
 
   return (
     <div style={{ "--mono": "'JetBrains Mono',ui-monospace,'Fira Code',monospace", "--serif": "'Cormorant Garamond','Georgia',serif", minHeight: "100vh", background: "#050505", color: "#ddd", fontFamily: "var(--serif)" }}>
@@ -551,7 +565,7 @@ export default function App() {
       {/* HEADER */}
       <header style={{ padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h1 style={{ fontFamily: "var(--serif)", fontSize: "22px", fontWeight: 300, letterSpacing: "3px", color: lang ? lang.color : "#3a3a3a", transition: "color .5s" }}>source.scent</h1>
+          <h1 style={{ fontFamily: "var(--serif)", fontSize: "22px", fontWeight: 300, letterSpacing: "3px", color: lang ? lang.color : "#3a3a3a", transition: "color .5s" }}>CODE.scent</h1>
           <p style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#1a1a1a", letterSpacing: "2.5px" }}>CODE → AROMA · 6CH · {proto.toUpperCase()}</p>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -752,8 +766,12 @@ export default function App() {
                 </div>
               )}
 
-              <button onClick={handleDiffuse} style={{ background: isDiffusing ? lang.color + "12" : "#0c0c0c", border: `2px solid ${isDiffusing ? lang.color : "#2a2a2a"}`, borderRadius: "7px", padding: "13px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "12px", fontWeight: 500, color: isDiffusing ? lang.color : "#555", letterSpacing: "4px", transition: "all .4s", "--gc": isDiffusing ? lang.color + "40" : "transparent", animation: isDiffusing ? "glowBtn 2s infinite" : "none" }}>
-                {isDiffusing ? "■ STOP" : "▶ DIFFUSE"}
+              <button onClick={handleDiffuse} style={{ background: isDiffusing ? lang.color + "12" : "#0c0c0c", border: `2px solid ${isDiffusing ? lang.color : "#2a2a2a"}`, borderRadius: "7px", padding: "0", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "12px", fontWeight: 500, color: isDiffusing ? lang.color : "#555", letterSpacing: "4px", transition: "all .4s", "--gc": isDiffusing ? lang.color + "40" : "transparent", animation: isDiffusing ? "glowBtn 2s infinite" : "none", position: "relative", overflow: "hidden" }}>
+                {isDiffusing && <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: `${(diffuseTimer / DIFFUSE_DURATION) * 100}%`, background: lang.color + "18", transition: "width 1s linear" }} />}
+                <div style={{ position: "relative", padding: "13px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                  <span>{isDiffusing ? "■ STOP" : "▶ DIFFUSE"}</span>
+                  {isDiffusing && <span style={{ fontSize: "10px", opacity: 0.7, fontVariantNumeric: "tabular-nums", minWidth: "18px" }}>{diffuseTimer}s</span>}
+                </div>
               </button>
 
               <div style={{ fontFamily: "var(--mono)", fontSize: "7.5px", color: "#1a1a1a", textAlign: "center", padding: "5px", background: "#060606", borderRadius: "3px", wordBreak: "break-all" }}>
