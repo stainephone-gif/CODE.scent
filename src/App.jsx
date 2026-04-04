@@ -746,6 +746,21 @@ export default function App() {
                   {custom.trim() && <span style={{ position: "absolute", top: "4px", right: "8px", fontFamily: "var(--mono)", fontSize: "7px", color: lang.color + "44" }}>{custom.split("\n").filter((l) => l.trim()).length} lines</span>}
                 </div>
               )}
+
+              {analysis && analysis.smells.length > 0 && (
+                <div className="sc-smell-panel" style={{ animation: "fadeIn .25s", background: "#0a0606", border: `1px solid ${SMELL_CHANNEL.color}22`, borderRadius: "5px", padding: "8px" }}>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: SMELL_CHANNEL.color + "88", letterSpacing: "2px", marginBottom: "4px" }}>☠ CODE SMELL — CH4: {analysis.smellScore}%</div>
+                  {analysis.smells.map((s, i) => (
+                    <div key={i} style={{ display: "flex", gap: "6px", alignItems: "baseline", padding: "3px 0" }}>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: SMELL_CHANNEL.color, minWidth: "28px", textAlign: "right" }}>+{s.weight}%</span>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "#aaa", lineHeight: "1.4" }}>{s.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {analysis && analysis.smells.length === 0 && (
+                <div style={{ fontFamily: "var(--mono)", fontSize: "8px", color: "#1a3a1a", padding: "6px 8px", background: "#060a06", borderRadius: "4px", border: "1px solid #0a1a0a" }}>✓ Код чист. CH4 молчит.</div>
+              )}
             </div>
 
             {/* RIGHT: MIXER */}
