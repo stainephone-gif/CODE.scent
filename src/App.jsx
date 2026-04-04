@@ -186,7 +186,14 @@ function computeChannelValues(lang, analysis) {
 
 function buildMqtt(ch) { return ch.map((c) => `CH${c.id}:${c.value}`).join(";"); }
 function buildBle(ch) { return ch.map((c) => `${c.id}=${c.value}`).join(","); }
-function buildSerial(ch) { return ch.map((c) => `p ${c.id} 0 ${Math.round(c.value / 100 * 4095)}`).join("\n"); }
+function buildSerial(ch) {
+  const cmds = [];
+  ch.forEach((c) => {
+    cmds.push(`e ${c.id}`);
+    cmds.push(`p ${c.id} 0 ${Math.round(c.value / 100 * 4095)}`);
+  });
+  return cmds.join("\n");
+}
 
 // ── Device Connection ──────────────────────────────────────
 const CONN = { disconnected: "disconnected", connecting: "connecting", connected: "connected", error: "error" };
@@ -238,8 +245,11 @@ function useBleConnection() {
     if (!navigator.bluetooth) { setError("Web Bluetooth not supported. Use Chrome/Edge."); setStatus(CONN.error); return; }
     try {
       setStatus(CONN.connecting); setError("");
+      const filters = [];
+      if (cfg.device) filters.push({ namePrefix: cfg.device });
       const device = await navigator.bluetooth.requestDevice({
-        filters: [{ name: cfg.device }],
+        filters: filters.length ? filters : undefined,
+        acceptAllDevices: filters.length === 0,
         optionalServices: [cfg.service],
       });
       deviceRef.current = device;
@@ -253,7 +263,7 @@ function useBleConnection() {
       charRef.current = characteristic;
       setStatus(CONN.connected);
     } catch (err) {
-      if (err.name === "NotFoundError") { setError("Device not found"); }
+      if (err.name === "NotFoundError") { setError("Device not found. Check name/UUID."); }
       else if (err.name === "SecurityError") { setError("Bluetooth blocked by browser"); }
       else { setError(err.message || "BLE error"); }
       setStatus(CONN.error);
@@ -268,9 +278,15 @@ function useBleConnection() {
 
   const write = useCallback(async (message) => {
     if (!charRef.current) return false;
+    const encoder = new TextEncoder();
     try {
-      const encoder = new TextEncoder();
-      await charRef.current.writeValue(encoder.encode(message));
+      const lines = message.split("\n").filter((l) => l.trim());
+      for (const line of lines) {
+        const data = encoder.encode(line + "\n");
+        try { await charRef.current.writeValueWithoutResponse(data); }
+        catch (_) { await charRef.current.writeValue(data); }
+        if (lines.length > 1) await new Promise((r) => setTimeout(r, 30));
+      }
       return true;
     } catch (err) {
       setError(err.message); setStatus(CONN.error);
@@ -461,9 +477,8 @@ export default function App() {
 
   const cmdStr = useMemo(() => {
     if (!allChannels.length) return "";
-    if (proto === "ble") return buildBle(allChannels);
-    if (proto === "serial") return buildSerial(allChannels);
-    return buildMqtt(allChannels);
+    if (proto === "mqtt") return buildMqtt(allChannels);
+    return buildSerial(allChannels);
   }, [allChannels, proto]);
 
   // Send commands to device when diffusing
@@ -488,12 +503,12 @@ export default function App() {
   // Stop all channels on stop
   const sendStop = useCallback(() => {
     if (!isConnected) return;
-    if (proto === "serial") {
-      serialConn.write("r");
+    if (proto === "mqtt") {
+      mqttConn.publish(mqttCfg.topic, "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0");
+    } else if (proto === "ble") {
+      bleConn.write("r");
     } else {
-      const stopCmd = proto === "ble" ? "1=0,2=0,3=0,4=0,5=0,6=0" : "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0";
-      if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, stopCmd);
-      else bleConn.write(stopCmd);
+      serialConn.write("r");
     }
   }, [proto, isConnected, mqttCfg.topic]);
 
