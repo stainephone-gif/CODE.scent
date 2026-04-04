@@ -186,6 +186,7 @@ function computeChannelValues(lang, analysis) {
 
 function buildMqtt(ch) { return ch.map((c) => `CH${c.id}:${c.value}`).join(";"); }
 function buildBle(ch) { return ch.map((c) => `${c.id}=${c.value}`).join(","); }
+function buildSerial(ch) { return ch.map((c) => `p ${c.id} 0 ${Math.round(c.value / 100 * 4095)}`).join("\n"); }
 
 // ── Device Connection ──────────────────────────────────────
 const CONN = { disconnected: "disconnected", connecting: "connecting", connected: "connected", error: "error" };
@@ -458,7 +459,12 @@ export default function App() {
     return chs.sort((a, b) => a.id - b.id);
   }, [lang, computed, overrides, smellVal]);
 
-  const cmdStr = useMemo(() => allChannels.length ? (proto === "ble" ? buildBle(allChannels) : buildMqtt(allChannels)) : "", [allChannels, proto]);
+  const cmdStr = useMemo(() => {
+    if (!allChannels.length) return "";
+    if (proto === "ble") return buildBle(allChannels);
+    if (proto === "serial") return buildSerial(allChannels);
+    return buildMqtt(allChannels);
+  }, [allChannels, proto]);
 
   // Send commands to device when diffusing
   const sendCmd = useCallback(() => {
@@ -481,13 +487,13 @@ export default function App() {
 
   // Stop all channels on stop
   const sendStop = useCallback(() => {
-    const stopCmd = proto === "ble"
-      ? "1=0,2=0,3=0,4=0,5=0,6=0"
-      : "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0";
-    if (isConnected) {
+    if (!isConnected) return;
+    if (proto === "serial") {
+      serialConn.write("r");
+    } else {
+      const stopCmd = proto === "ble" ? "1=0,2=0,3=0,4=0,5=0,6=0" : "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0";
       if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, stopCmd);
-      else if (proto === "ble") bleConn.write(stopCmd);
-      else serialConn.write(stopCmd);
+      else bleConn.write(stopCmd);
     }
   }, [proto, isConnected, mqttCfg.topic]);
 
@@ -609,10 +615,11 @@ export default function App() {
           {proto === "serial" && isConnected && (
             <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px" }}>
               <div style={{ display: "flex", gap: "6px" }}>
-                <button onClick={() => serialConn.write("PING")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>PING</button>
-                <button onClick={() => serialConn.write("help")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>HELP</button>
-                <button onClick={() => serialConn.write("status")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>STATUS</button>
-                <button onClick={() => serialConn.write("CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>ALL OFF</button>
+                <button onClick={() => serialConn.write("h")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>HELP</button>
+                <button onClick={() => serialConn.write("p 1 0 2048")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>CH1 50%</button>
+                <button onClick={() => serialConn.write("r")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>RESET</button>
+                <button onClick={() => serialConn.write("e 1")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>ENABLE 1</button>
+                <button onClick={() => serialConn.write("f 256")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>FAN 50%</button>
               </div>
               <div style={{ display: "flex", gap: "4px" }}>
                 <input value={serialCmd} onChange={(e) => setSerialCmd(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && serialCmd.trim()) { serialConn.write(serialCmd.trim()); setSerialCmd(""); } }} placeholder="Custom command..." style={{ flex: 1, background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 6px", color: "#777", fontFamily: "var(--mono)", fontSize: "9px" }} />
