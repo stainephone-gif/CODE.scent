@@ -189,8 +189,9 @@ function buildBle(ch) { return ch.map((c) => `${c.id}=${c.value}`).join(","); }
 function buildSerial(ch) {
   const cmds = [];
   ch.forEach((c) => {
-    cmds.push(`e ${c.id}`);
-    cmds.push(`p ${c.id} 0 ${Math.round(c.value / 100 * 4095)}`);
+    const devCh = c.id - 1;
+    cmds.push(`e ${devCh}`);
+    cmds.push(`p ${devCh} 0 ${Math.round(c.value / 100 * 4095)}`);
   });
   return cmds.join("\n");
 }
