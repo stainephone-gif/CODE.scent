@@ -406,7 +406,7 @@ function useSerialConnection() {
 }
 
 // ── Vertical Slider ────────────────────────────────────────
-function VSlider({ value, onChange, color, label, icon, note, disabled, glow, code }) {
+function VSlider({ value, onChange, color, icon, disabled, glow }) {
   const ref = useRef(null); const drag = useRef(false);
   const calc = useCallback((e) => {
     if (!ref.current || disabled) return;
@@ -432,9 +432,6 @@ function VSlider({ value, onChange, color, label, icon, note, disabled, glow, co
         <div style={{ position: "absolute", left: "50%", bottom: `calc(${value}% - 10px)`, transform: "translateX(-50%)", width: "20px", height: "20px", borderRadius: "50%", background: `radial-gradient(circle at 35% 35%, ${color}, ${color}66)`, border: "2px solid #070707", boxShadow: glow && value > 0 ? `0 0 12px ${color}55` : "none", transition: drag.current ? "none" : "bottom .35s ease, box-shadow .4s" }} />
       </div>
       <span style={{ fontFamily: "var(--mono)", fontSize: "18px", fontWeight: 600, color: value > 0 ? color : "#2a2a2a", minWidth: "28px", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{value}</span>
-      <span style={{ fontFamily: "var(--mono)", fontSize: "12px", color: "#999", textAlign: "center", lineHeight: "1.3", maxWidth: "72px" }}>{label}</span>
-      {note && <span style={{ fontFamily: "var(--serif)", fontSize: "12px", fontStyle: "italic", color: "#888" }}>{note}</span>}
-      {code && <span style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "#999", textAlign: "center", maxWidth: "72px", wordBreak: "break-all" }}>{code}</span>}
     </div>
   );
 }
@@ -758,18 +755,11 @@ export default function App() {
               <div className="sc-slider-row" style={{ display: "flex", justifyContent: "center", gap: "6px", position: "relative" }}>
                 {isDiffusing && <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>{Array.from({ length: 6 }).map((_, i) => <div key={i} style={{ position: "absolute", bottom: 0, left: `${8 + Math.random() * 84}%`, width: "3px", height: "3px", borderRadius: "50%", background: lang.color, opacity: 0, animation: `rise 2s ease-out ${i * .35}s infinite`, filter: "blur(1px)" }} />)}</div>}
                 {lang.channels.map((ch) => (
-                  <VSlider key={ch.id} value={getVal(ch.id)} onChange={(v) => setOverrides((p) => ({ ...p, [ch.id]: v }))} color={lang.color} label={ch.scent} icon={ch.icon} note={ch.note} code={ch.code} glow={isDiffusing} />
+                  <VSlider key={ch.id} value={getVal(ch.id)} onChange={(v) => setOverrides((p) => ({ ...p, [ch.id]: v }))} color={lang.color} icon={ch.icon} glow={isDiffusing} />
                 ))}
                 <div style={{ width: "1px", background: "#333", margin: "20px 2px", alignSelf: "stretch" }} />
-                <VSlider value={smellVal} onChange={(v) => setOverrides((p) => ({ ...p, 4: v }))} color={SMELL_CHANNEL.color} label={SMELL_CHANNEL.scent} icon={SMELL_CHANNEL.icon} note="code smell" code={SMELL_CHANNEL.code} glow={isDiffusing && smellVal > 15} />
+                <VSlider value={smellVal} onChange={(v) => setOverrides((p) => ({ ...p, 4: v }))} color={SMELL_CHANNEL.color} icon={SMELL_CHANNEL.icon} glow={isDiffusing && smellVal > 15} />
               </div>
-
-              {analysis && (
-                <div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#888", textAlign: "center", lineHeight: "1.6" }}>
-                  {lang.channels.map((c) => <span key={c.id}>{c.scent} <span style={{ color: lang.color }}>{getVal(c.id)}</span> · </span>)}
-                  <span>{SMELL_CHANNEL.scent} <span style={{ color: smellVal > 0 ? SMELL_CHANNEL.color : "#222" }}>{smellVal}</span></span>
-                </div>
-              )}
 
               <button className="sc-diffuse-btn" onClick={handleDiffuse} style={{ background: isDiffusing ? lang.color + "12" : "#0c0c0c", border: `2px solid ${isDiffusing ? lang.color : "#2a2a2a"}`, borderRadius: "7px", padding: "0", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "18px", fontWeight: 500, color: isDiffusing ? lang.color : "#555", letterSpacing: "4px", transition: "all .4s", "--gc": isDiffusing ? lang.color + "40" : "transparent", animation: isDiffusing ? "glowBtn 2s infinite" : "none", position: "relative", overflow: "hidden" }}>
                 {isDiffusing && <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: `${(diffuseTimer / DIFFUSE_DURATION) * 100}%`, background: lang.color + "18", transition: "width 1s linear" }} />}
