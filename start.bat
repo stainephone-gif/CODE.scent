@@ -18,4 +18,4 @@ echo Starting source.scent...
 echo Press Ctrl+C to stop
 echo.
 
-call npx vite --open
+call npx vite --host 0.0.0.0 --open
