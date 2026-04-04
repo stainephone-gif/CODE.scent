@@ -14,9 +14,8 @@ if not exist node_modules (
     echo.
 )
 
-echo Starting source.scent at http://localhost:5173
+echo Starting source.scent...
 echo Press Ctrl+C to stop
 echo.
 
-start "" http://localhost:5173
-call npx vite
+call npx vite --open
