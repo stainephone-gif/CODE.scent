@@ -578,8 +578,6 @@ export default function App() {
           .sc-lang-cards{grid-template-columns:repeat(3,1fr)!important;gap:6px!important}
           .sc-lang-cards button{padding:12px 10px!important}
           .sc-lang-cards button span{font-size:14px!important}
-          .sc-mod-grid{grid-template-columns:repeat(3,1fr)!important}
-          .sc-mod-grid>div span{font-size:11px!important}
           .sc-code-pre{max-height:140px!important;font-size:12px!important;line-height:1.5!important}
           .sc-mixer{min-width:0!important}
           .sc-mixer>div{font-size:10px!important}
@@ -596,11 +594,9 @@ export default function App() {
           .sc-serial-btns button{font-size:11px!important;padding:8px 12px!important}
           .sc-diffuse-btn{font-size:16px!important}
           .sc-diffuse-btn>div{padding:18px!important}
-          .sc-smell-panel span{font-size:11px!important}
         }
         @media(max-width:500px){
           .sc-lang-cards{grid-template-columns:1fr!important}
-          .sc-mod-grid{grid-template-columns:1fr!important}
           .sc-slider-track{height:80px!important}
         }
       `}</style>
@@ -750,43 +746,6 @@ export default function App() {
                   {custom.trim() && <span style={{ position: "absolute", top: "4px", right: "8px", fontFamily: "var(--mono)", fontSize: "7px", color: lang.color + "44" }}>{custom.split("\n").filter((l) => l.trim()).length} lines</span>}
                 </div>
               )}
-
-              {analysis && (
-                <div style={{ animation: "fadeIn .25s" }}>
-                  <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#aaa", letterSpacing: "2px", marginBottom: "5px" }}>МОДУЛЯЦИЯ ±20%</div>
-                  <div className="sc-mod-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
-                    {[
-                      { label: "«Воздух»", sub: "→ верхняя ↑", val: analysis.modulation.air, detail: `${analysis.metrics.comments} комм · ${analysis.metrics.emptyLines} пустых` },
-                      { label: "«Сложность»", sub: "→ все ноты ↑", val: analysis.modulation.complexity, detail: `глуб ${analysis.metrics.maxDepth} · ${analysis.metrics.branches} ветвл` },
-                      { label: "«Масса»", sub: "→ базовая ↑", val: analysis.modulation.mass, detail: `${analysis.metrics.lines} строк` },
-                    ].map((m) => (
-                      <div key={m.label} style={{ padding: "7px", background: "#111", borderRadius: "5px", border: "1px solid #111" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                          <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "#aaa" }}>{m.label}</span>
-                          <span style={{ fontFamily: "var(--mono)", fontSize: "13px", fontWeight: 600, color: lang.color }}>{m.val}%</span>
-                        </div>
-                        <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#888", marginTop: "2px" }}>{m.sub}</div>
-                        <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#777", marginTop: "1px" }}>{m.detail}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {analysis && analysis.smells.length > 0 && (
-                <div className="sc-smell-panel" style={{ animation: "fadeIn .25s", background: "#0a0606", border: `1px solid ${SMELL_CHANNEL.color}22`, borderRadius: "5px", padding: "8px" }}>
-                  <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: SMELL_CHANNEL.color + "88", letterSpacing: "2px", marginBottom: "4px" }}>☠ CODE SMELL — CH4: {analysis.smellScore}%</div>
-                  {analysis.smells.map((s, i) => (
-                    <div key={i} style={{ display: "flex", gap: "6px", alignItems: "baseline", padding: "3px 0" }}>
-                      <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: SMELL_CHANNEL.color, minWidth: "28px", textAlign: "right" }}>+{s.weight}%</span>
-                      <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "#aaa", lineHeight: "1.4" }}>{s.text}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {analysis && analysis.smells.length === 0 && (
-                <div style={{ fontFamily: "var(--mono)", fontSize: "8px", color: "#1a3a1a", padding: "6px 8px", background: "#060a06", borderRadius: "4px", border: "1px solid #0a1a0a" }}>✓ Код чист. CH4 молчит.</div>
-              )}
             </div>
 
             {/* RIGHT: MIXER */}
@@ -823,24 +782,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* 6-CHANNEL BAR */}
-          <div style={{ marginTop: "12px" }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: "6.5px", color: "#181818", letterSpacing: "2px", marginBottom: "3px" }}>ALL 6 CHANNELS</div>
-            <div style={{ display: "flex", gap: "3px" }}>
-              {[1, 2, 3, 4, 5, 6].map((id) => {
-                let val = 0, col = "#333", isActive = false, label = "";
-                if (id === 4) { val = smellVal; col = SMELL_CHANNEL.color; isActive = true; label = "☠"; }
-                else { Object.values(LANGS).forEach((l) => l.channels.forEach((c) => { if (c.id === id) { col = l.color; label = c.icon; if (sel && l === LANGS[sel]) { val = getVal(id); isActive = true; } } })); }
-                return (
-                  <div key={id} style={{ flex: 1, height: "32px", background: "#070707", borderRadius: "3px", position: "relative", overflow: "hidden", border: `1px solid ${isActive ? col + "28" : "#0a0a0a"}` }}>
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: `${val}%`, background: `${col}${isActive ? "55" : "15"}`, transition: "height .3s" }} />
-                    <span style={{ position: "absolute", top: "1px", width: "100%", textAlign: "center", fontSize: "8px" }}>{label}</span>
-                    <span style={{ position: "absolute", bottom: "1px", width: "100%", textAlign: "center", fontFamily: "var(--mono)", fontSize: "7px", color: isActive ? col + "aa" : "#151515" }}>{id}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       )}
 
