@@ -11,4 +11,4 @@ echo "Starting source.scent..."
 echo "Press Ctrl+C to stop"
 echo ""
 
-npx vite --open
+npx vite --host 0.0.0.0 --open
