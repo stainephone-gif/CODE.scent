@@ -349,14 +349,22 @@ export default function App() {
   const cmdStr = useMemo(() => allChannels.length ? (proto === "mqtt" ? buildMqtt(allChannels) : buildBle(allChannels)) : "", [allChannels, proto]);
 
   // Send commands to device when diffusing
-  useEffect(() => {
-    if (!isDiffusing || !cmdStr) return;
+  const sendCmd = useCallback(() => {
+    if (!isDiffusing || !cmdStr || !isConnected) return;
     console.log(`${proto.toUpperCase()} →`, cmdStr);
-    if (isConnected) {
-      if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, cmdStr);
-      else bleConn.write(cmdStr);
-    }
-  }, [cmdStr, isDiffusing]);
+    if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, cmdStr);
+    else bleConn.write(cmdStr);
+  }, [isDiffusing, cmdStr, isConnected, proto, mqttConn, bleConn, mqttCfg.topic]);
+
+  // Send on value change or connection change
+  useEffect(() => { sendCmd(); }, [sendCmd]);
+
+  // Periodic resend every 2s while diffusing (keep-alive)
+  useEffect(() => {
+    if (!isDiffusing || !isConnected) return;
+    const iv = setInterval(sendCmd, 2000);
+    return () => clearInterval(iv);
+  }, [isDiffusing, isConnected, sendCmd]);
 
   // Stop all channels on stop
   const sendStop = useCallback(() => {
