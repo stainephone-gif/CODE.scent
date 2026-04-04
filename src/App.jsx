@@ -198,7 +198,7 @@ function buildSerial(ch) {
 
 // ── Device Connection ──────────────────────────────────────
 const CONN = { disconnected: "disconnected", connecting: "connecting", connected: "connected", error: "error" };
-const CONN_COLORS = { disconnected: "#3a3a3a", connecting: "#a08030", connected: "#30a040", error: "#E04040" };
+const CONN_COLORS = { disconnected: "#888", connecting: "#a08030", connected: "#30a040", error: "#E04040" };
 const CONN_LABELS = { disconnected: "OFF", connecting: "LINK", connected: "LIVE", error: "ERR" };
 
 function useMqttConnection() {
@@ -434,9 +434,9 @@ function VSlider({ value, onChange, color, label, icon, note, disabled, glow, co
         <div style={{ position: "absolute", left: "50%", bottom: `calc(${value}% - 10px)`, transform: "translateX(-50%)", width: "20px", height: "20px", borderRadius: "50%", background: `radial-gradient(circle at 35% 35%, ${color}, ${color}66)`, border: "2px solid #070707", boxShadow: glow && value > 0 ? `0 0 12px ${color}55` : "none", transition: drag.current ? "none" : "bottom .35s ease, box-shadow .4s" }} />
       </div>
       <span style={{ fontFamily: "var(--mono)", fontSize: "14px", fontWeight: 600, color: value > 0 ? color : "#2a2a2a", minWidth: "28px", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{value}</span>
-      <span style={{ fontFamily: "var(--mono)", fontSize: "7.5px", color: "#555", textAlign: "center", lineHeight: "1.3", maxWidth: "68px" }}>{label}</span>
-      {note && <span style={{ fontFamily: "var(--serif)", fontSize: "8px", fontStyle: "italic", color: "#333" }}>{note}</span>}
-      {code && <span style={{ fontFamily: "var(--mono)", fontSize: "6px", color: "#1a1a1a", textAlign: "center", maxWidth: "68px", wordBreak: "break-all" }}>{code}</span>}
+      <span style={{ fontFamily: "var(--mono)", fontSize: "7.5px", color: "#999", textAlign: "center", lineHeight: "1.3", maxWidth: "68px" }}>{label}</span>
+      {note && <span style={{ fontFamily: "var(--serif)", fontSize: "8px", fontStyle: "italic", color: "#888" }}>{note}</span>}
+      {code && <span style={{ fontFamily: "var(--mono)", fontSize: "6px", color: "#999", textAlign: "center", maxWidth: "68px", wordBreak: "break-all" }}>{code}</span>}
     </div>
   );
 }
@@ -549,7 +549,7 @@ export default function App() {
   const selectLang = (k) => { if (isDiffusing) sendStop(); setIsDiffusing(false); setDiffuseTimer(0); setOverrides({}); setCustom(""); setMode("sample"); setSel(sel === k ? null : k); };
 
   return (
-    <div style={{ "--mono": "'JetBrains Mono',ui-monospace,'Fira Code',monospace", "--serif": "'Cormorant Garamond','Georgia',serif", minHeight: "100vh", background: "#050505", color: "#ddd", fontFamily: "var(--serif)" }}>
+    <div style={{ "--mono": "'JetBrains Mono',ui-monospace,'Fira Code',monospace", "--serif": "'Cormorant Garamond','Georgia',serif", minHeight: "100vh", background: "#0c0c0c", color: "#e8e8e8", fontFamily: "var(--serif)" }}>
       <style>{`
         @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;src:url('/JetBrainsMono-VariableFont_wght.ttf') format('truetype')}
         @font-face{font-family:'JetBrains Mono';font-style:italic;font-weight:100 800;src:url('/JetBrainsMono-Italic-VariableFont_wght.ttf') format('truetype')}
@@ -565,35 +565,35 @@ export default function App() {
       {/* HEADER */}
       <header style={{ padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h1 style={{ fontFamily: "var(--serif)", fontSize: "22px", fontWeight: 300, letterSpacing: "3px", color: lang ? lang.color : "#3a3a3a", transition: "color .5s" }}>CODE.scent</h1>
-          <p style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#1a1a1a", letterSpacing: "2.5px" }}>CODE → AROMA · 6CH · {proto.toUpperCase()}</p>
+          <h1 style={{ fontFamily: "var(--serif)", fontSize: "22px", fontWeight: 300, letterSpacing: "3px", color: lang ? lang.color : "#888", transition: "color .5s" }}>CODE.scent</h1>
+          <p style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#999", letterSpacing: "2.5px" }}>CODE → AROMA · 6CH · {proto.toUpperCase()}</p>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <div style={{ display: "flex", borderRadius: "8px", overflow: "hidden", border: "1px solid #151515" }}>
+          <div style={{ display: "flex", borderRadius: "8px", overflow: "hidden", border: "1px solid #282828" }}>
             {["mqtt", "ble", "serial"].map((p) => (
               <button key={p} onClick={() => setProto(p)} style={{ background: proto === p ? "#151515" : "#080808", border: "none", padding: "3px 8px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: proto === p ? "#777" : "#2a2a2a", letterSpacing: "1px" }}>{p === "serial" ? "USB" : p.toUpperCase()}</button>
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "12px", background: isDiffusing ? (lang?.color || "#555") + "0e" : "#0a0a0a", border: `1px solid ${isDiffusing ? (lang?.color || "#555") + "40" : "#151515"}` }}>
-            <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: isDiffusing ? lang?.color : "#3a3a3a", animation: isDiffusing ? "pulse 1.4s infinite" : "none" }} />
+            <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: isDiffusing ? lang?.color : "#888", animation: isDiffusing ? "pulse 1.4s infinite" : "none" }} />
             <span style={{ fontFamily: "var(--mono)", fontSize: "8px", color: isDiffusing ? lang?.color : "#333", letterSpacing: "1px" }}>{isDiffusing ? "DIFF" : "STBY"}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "10px", background: "#0a0a0a", border: `1px solid ${CONN_COLORS[conn.status]}33`, cursor: "pointer" }} onClick={handleConnect} title={conn.error || (isConnected ? "Disconnect" : "Connect")}>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "10px", background: "#131313", border: `1px solid ${CONN_COLORS[conn.status]}33`, cursor: "pointer" }} onClick={handleConnect} title={conn.error || (isConnected ? "Disconnect" : "Connect")}>
             <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: CONN_COLORS[conn.status], animation: conn.status === CONN.connecting ? "pulse 0.8s infinite" : "none" }} />
             <span style={{ fontFamily: "var(--mono)", fontSize: "7px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>{CONN_LABELS[conn.status]}</span>
           </div>
-          <button onClick={() => setShowCfg(!showCfg)} style={{ background: "none", border: "1px solid #181818", borderRadius: "50%", width: "26px", height: "26px", color: "#333", cursor: "pointer", fontSize: "11px", display: "flex", alignItems: "center", justifyContent: "center" }}>⚙</button>
+          <button onClick={() => setShowCfg(!showCfg)} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: "50%", width: "26px", height: "26px", color: "#888", cursor: "pointer", fontSize: "11px", display: "flex", alignItems: "center", justifyContent: "center" }}>⚙</button>
         </div>
       </header>
 
       {/* CONFIG */}
       {showCfg && (
-        <div style={{ margin: "10px 16px", padding: "10px", background: "#090909", border: "1px solid #141414", borderRadius: "6px", animation: "fadeIn .25s" }}>
+        <div style={{ margin: "10px 16px", padding: "10px", background: "#131313", border: "1px solid #282828", borderRadius: "6px", animation: "fadeIn .25s" }}>
           {proto === "mqtt" ? (
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
               {[{ l: "Host (WebSocket)", k: "host", w: "140px" }, { l: "WS Port", k: "port", w: "55px" }, { l: "Topic", k: "topic", w: "155px" }].map((f) => (
-                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", marginBottom: "2px" }}>{f.l}</div>
-                <input value={mqttCfg[f.k]} onChange={(e) => setMqttCfg({ ...mqttCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "3px 6px", color: "#555", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
+                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#bbb", marginBottom: "2px" }}>{f.l}</div>
+                <input value={mqttCfg[f.k]} onChange={(e) => setMqttCfg({ ...mqttCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
               ))}
               <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "9px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
                 {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
@@ -602,8 +602,8 @@ export default function App() {
           ) : proto === "ble" ? (
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
               {[{ l: "Device", k: "device", w: "150px" }, { l: "Service UUID", k: "service", w: "80px" }, { l: "Char UUID", k: "char", w: "80px" }].map((f) => (
-                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", marginBottom: "2px" }}>{f.l}</div>
-                <input value={bleCfg[f.k]} onChange={(e) => setBleCfg({ ...bleCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "3px 6px", color: "#555", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
+                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#bbb", marginBottom: "2px" }}>{f.l}</div>
+                <input value={bleCfg[f.k]} onChange={(e) => setBleCfg({ ...bleCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
               ))}
               <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "9px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
                 {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
@@ -612,8 +612,8 @@ export default function App() {
           ) : (
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
               {[{ l: "Baud Rate", k: "baudRate", w: "80px" }].map((f) => (
-                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", marginBottom: "2px" }}>{f.l}</div>
-                <input value={serialCfg[f.k]} onChange={(e) => setSerialCfg({ ...serialCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "3px 6px", color: "#555", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
+                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#bbb", marginBottom: "2px" }}>{f.l}</div>
+                <input value={serialCfg[f.k]} onChange={(e) => setSerialCfg({ ...serialCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
               ))}
               <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "9px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
                 {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
@@ -624,15 +624,15 @@ export default function App() {
 
           {/* SERIAL DIAGNOSTIC LOG */}
           {proto === "serial" && serialConn.log.length > 0 && (
-            <div style={{ marginTop: "8px", borderTop: "1px solid #141414", paddingTop: "8px" }}>
+            <div style={{ marginTop: "8px", borderTop: "1px solid #282828", paddingTop: "8px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                <span style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", letterSpacing: "2px" }}>SERIAL LOG</span>
-                <button onClick={serialConn.clearLog} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "2px 6px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "7px", color: "#333" }}>CLEAR</button>
+                <span style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#bbb", letterSpacing: "2px" }}>SERIAL LOG</span>
+                <button onClick={serialConn.clearLog} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "2px 6px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "7px", color: "#888" }}>CLEAR</button>
               </div>
               <div style={{ maxHeight: "120px", overflowY: "auto", background: "#060606", borderRadius: "3px", padding: "4px 6px" }}>
                 {serialConn.log.map((entry, i) => (
                   <div key={i} style={{ fontFamily: "var(--mono)", fontSize: "8px", lineHeight: "1.6", color: entry.dir === "tx" ? "#a08030" : entry.dir === "rx" ? "#30a040" : "#555" }}>
-                    <span style={{ color: "#222", marginRight: "4px" }}>{new Date(entry.ts).toLocaleTimeString("en", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                    <span style={{ color: "#aaa", marginRight: "4px" }}>{new Date(entry.ts).toLocaleTimeString("en", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
                     <span style={{ color: entry.dir === "tx" ? "#a08030" : entry.dir === "rx" ? "#30a040" : "#E04040", marginRight: "4px" }}>{entry.dir === "tx" ? "TX" : entry.dir === "rx" ? "RX" : "!!"}</span>
                     {entry.text}
                   </div>
@@ -645,15 +645,15 @@ export default function App() {
           {proto === "serial" && isConnected && (
             <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px" }}>
               <div style={{ display: "flex", gap: "6px" }}>
-                <button onClick={() => serialConn.write("h")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>HELP</button>
-                <button onClick={() => serialConn.write("r")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>RESET</button>
-                <button onClick={() => serialConn.write("f256")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#30a040", letterSpacing: "1px" }}>FAN 50%</button>
-                <button onClick={() => serialConn.write("f511")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#30a040", letterSpacing: "1px" }}>FAN MAX</button>
-                <button onClick={() => serialConn.write("f000")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#30a040", letterSpacing: "1px" }}>FAN OFF</button>
+                <button onClick={() => serialConn.write("h")} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#999", letterSpacing: "1px" }}>HELP</button>
+                <button onClick={() => serialConn.write("r")} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#999", letterSpacing: "1px" }}>RESET</button>
+                <button onClick={() => serialConn.write("f256")} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#30a040", letterSpacing: "1px" }}>FAN 50%</button>
+                <button onClick={() => serialConn.write("f511")} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#30a040", letterSpacing: "1px" }}>FAN MAX</button>
+                <button onClick={() => serialConn.write("f000")} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#30a040", letterSpacing: "1px" }}>FAN OFF</button>
               </div>
               <div style={{ display: "flex", gap: "4px" }}>
-                <input value={serialCmd} onChange={(e) => setSerialCmd(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && serialCmd.trim()) { serialConn.write(serialCmd.trim()); setSerialCmd(""); } }} placeholder="Custom command..." style={{ flex: 1, background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 6px", color: "#777", fontFamily: "var(--mono)", fontSize: "9px" }} />
-                <button onClick={() => { if (serialCmd.trim()) { serialConn.write(serialCmd.trim()); setSerialCmd(""); } }} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 8px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555" }}>SEND</button>
+                <input value={serialCmd} onChange={(e) => setSerialCmd(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && serialCmd.trim()) { serialConn.write(serialCmd.trim()); setSerialCmd(""); } }} placeholder="Custom command..." style={{ flex: 1, background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 6px", color: "#bbb", fontFamily: "var(--mono)", fontSize: "9px" }} />
+                <button onClick={() => { if (serialCmd.trim()) { serialConn.write(serialCmd.trim()); setSerialCmd(""); } }} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 8px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#999" }}>SEND</button>
               </div>
             </div>
           )}
@@ -668,10 +668,10 @@ export default function App() {
             <button key={k} onClick={() => selectLang(k)} style={{ background: on ? l.dim : "#080808", border: `1px solid ${on ? l.color + "44" : "#111"}`, borderRadius: "7px", padding: "10px 8px", cursor: "pointer", textAlign: "left", transition: "all .3s", position: "relative", overflow: "hidden" }}>
               {on && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: l.color }} />}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <span style={{ fontFamily: "var(--mono)", fontSize: "13px", fontWeight: 500, color: on ? l.color : "#3a3a3a" }}>{l.name}</span>
+                <span style={{ fontFamily: "var(--mono)", fontSize: "13px", fontWeight: 500, color: on ? l.color : "#888" }}>{l.name}</span>
                 <span style={{ fontFamily: "var(--mono)", fontSize: "7px", color: l.status === "мёртв" ? "#4a2020" : l.status === "зомби" ? "#4a3a20" : "#204a2a", padding: "1px 5px", borderRadius: "3px", background: l.status === "мёртв" ? "#1a0808" : l.status === "зомби" ? "#1a1208" : "#081a0a" }}>{l.status}</span>
               </div>
-              <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#222", marginTop: "2px" }}>{l.year} · {l.channels.length}ch</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#aaa", marginTop: "2px" }}>{l.year} · {l.channels.length}ch</div>
               <div style={{ display: "flex", gap: "3px", marginTop: "4px" }}>{l.channels.map((c) => <span key={c.id} style={{ fontSize: "10px", opacity: on ? 1 : .25 }}>{c.icon}</span>)}</div>
             </button>
           );
@@ -682,13 +682,13 @@ export default function App() {
       {lang && (
         <div style={{ padding: "0 16px 60px", animation: "fadeIn .35s" }}>
           <div style={{ display: "flex", gap: "8px", alignItems: "baseline", marginBottom: "10px", flexWrap: "wrap" }}>
-            <span style={{ fontFamily: "var(--serif)", fontSize: "13px", fontWeight: 300, fontStyle: "italic", color: "#4a4a4a" }}>{lang.philosophy}</span>
-            <span style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#1a1a1a" }}>{lang.author}</span>
+            <span style={{ fontFamily: "var(--serif)", fontSize: "13px", fontWeight: 300, fontStyle: "italic", color: "#aaa" }}>{lang.philosophy}</span>
+            <span style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#999" }}>{lang.author}</span>
           </div>
 
           <div style={{ display: "flex", marginBottom: "10px" }}>
             {[{ k: "sample", l: `${lang.ext} sample` }, { k: "custom", l: "свой код ✎" }].map((m) => (
-              <button key={m.k} onClick={() => { setMode(m.k); setOverrides({}); }} style={{ background: mode === m.k ? lang.color + "10" : "#080808", border: `1px solid ${mode === m.k ? lang.color + "35" : "#131313"}`, borderRadius: m.k === "sample" ? "4px 0 0 4px" : "0 4px 4px 0", padding: "5px 13px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "9px", color: mode === m.k ? lang.color : "#3a3a3a" }}>{m.l}</button>
+              <button key={m.k} onClick={() => { setMode(m.k); setOverrides({}); }} style={{ background: mode === m.k ? lang.color + "10" : "#080808", border: `1px solid ${mode === m.k ? lang.color + "35" : "#131313"}`, borderRadius: m.k === "sample" ? "4px 0 0 4px" : "0 4px 4px 0", padding: "5px 13px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "9px", color: mode === m.k ? lang.color : "#888" }}>{m.l}</button>
             ))}
           </div>
 
@@ -696,34 +696,34 @@ export default function App() {
             {/* LEFT */}
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", minWidth: 0 }}>
               {mode === "sample" ? (
-                <pre style={{ background: "#080808", border: `1px solid ${lang.color}12`, borderRadius: "6px", padding: "11px", fontFamily: "var(--mono)", fontSize: "10px", lineHeight: "1.6", color: "#5a5a5a", overflowX: "auto", overflowY: "auto", maxHeight: "260px", margin: 0, position: "relative" }}>
+                <pre style={{ background: "#111", border: `1px solid ${lang.color}12`, borderRadius: "6px", padding: "11px", fontFamily: "var(--mono)", fontSize: "10px", lineHeight: "1.6", color: "#aaa", overflowX: "auto", overflowY: "auto", maxHeight: "260px", margin: 0, position: "relative" }}>
                   <span style={{ position: "absolute", top: "4px", right: "8px", fontSize: "7px", color: lang.color + "33", letterSpacing: "1.5px" }}>{lang.ext}</span>
                   {lang.sample}
                 </pre>
               ) : (
                 <div style={{ position: "relative" }}>
                   <textarea value={custom} onChange={(e) => { setCustom(e.target.value); setOverrides({}); }} placeholder={`// Вставьте ${lang.name} код`} spellCheck={false}
-                    style={{ width: "100%", minHeight: "260px", resize: "vertical", background: "#080808", border: `1px solid ${lang.color}18`, borderRadius: "6px", padding: "11px", fontFamily: "var(--mono)", fontSize: "10px", lineHeight: "1.6", color: "#777", whiteSpace: "pre", tabSize: 4 }} />
+                    style={{ width: "100%", minHeight: "260px", resize: "vertical", background: "#111", border: `1px solid ${lang.color}18`, borderRadius: "6px", padding: "11px", fontFamily: "var(--mono)", fontSize: "10px", lineHeight: "1.6", color: "#bbb", whiteSpace: "pre", tabSize: 4 }} />
                   {custom.trim() && <span style={{ position: "absolute", top: "4px", right: "8px", fontFamily: "var(--mono)", fontSize: "7px", color: lang.color + "44" }}>{custom.split("\n").filter((l) => l.trim()).length} lines</span>}
                 </div>
               )}
 
               {analysis && (
                 <div style={{ animation: "fadeIn .25s" }}>
-                  <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#222", letterSpacing: "2px", marginBottom: "5px" }}>МОДУЛЯЦИЯ ±20%</div>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#aaa", letterSpacing: "2px", marginBottom: "5px" }}>МОДУЛЯЦИЯ ±20%</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
                     {[
                       { label: "«Воздух»", sub: "→ верхняя ↑", val: analysis.modulation.air, detail: `${analysis.metrics.comments} комм · ${analysis.metrics.emptyLines} пустых` },
                       { label: "«Сложность»", sub: "→ все ноты ↑", val: analysis.modulation.complexity, detail: `глуб ${analysis.metrics.maxDepth} · ${analysis.metrics.branches} ветвл` },
                       { label: "«Масса»", sub: "→ базовая ↑", val: analysis.modulation.mass, detail: `${analysis.metrics.lines} строк` },
                     ].map((m) => (
-                      <div key={m.label} style={{ padding: "7px", background: "#080808", borderRadius: "5px", border: "1px solid #111" }}>
+                      <div key={m.label} style={{ padding: "7px", background: "#111", borderRadius: "5px", border: "1px solid #111" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                          <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "#666" }}>{m.label}</span>
+                          <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "#aaa" }}>{m.label}</span>
                           <span style={{ fontFamily: "var(--mono)", fontSize: "13px", fontWeight: 600, color: lang.color }}>{m.val}%</span>
                         </div>
-                        <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#333", marginTop: "2px" }}>{m.sub}</div>
-                        <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#1e1e1e", marginTop: "1px" }}>{m.detail}</div>
+                        <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#888", marginTop: "2px" }}>{m.sub}</div>
+                        <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#777", marginTop: "1px" }}>{m.detail}</div>
                       </div>
                     ))}
                   </div>
@@ -736,7 +736,7 @@ export default function App() {
                   {analysis.smells.map((s, i) => (
                     <div key={i} style={{ display: "flex", gap: "6px", alignItems: "baseline", padding: "3px 0" }}>
                       <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: SMELL_CHANNEL.color, minWidth: "28px", textAlign: "right" }}>+{s.weight}%</span>
-                      <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "#666", lineHeight: "1.4" }}>{s.text}</span>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: "9px", color: "#aaa", lineHeight: "1.4" }}>{s.text}</span>
                     </div>
                   ))}
                 </div>
@@ -747,20 +747,20 @@ export default function App() {
             </div>
 
             {/* RIGHT: MIXER */}
-            <div style={{ background: "#080808", border: `1px solid ${lang.color}12`, borderRadius: "7px", padding: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", letterSpacing: "2px", textAlign: "center" }}>MIXER — {lang.name.toUpperCase()}</div>
+            <div style={{ background: "#111", border: `1px solid ${lang.color}12`, borderRadius: "7px", padding: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#bbb", letterSpacing: "2px", textAlign: "center" }}>MIXER — {lang.name.toUpperCase()}</div>
 
               <div style={{ display: "flex", justifyContent: "center", gap: "6px", position: "relative" }}>
                 {isDiffusing && <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>{Array.from({ length: 6 }).map((_, i) => <div key={i} style={{ position: "absolute", bottom: 0, left: `${8 + Math.random() * 84}%`, width: "3px", height: "3px", borderRadius: "50%", background: lang.color, opacity: 0, animation: `rise 2s ease-out ${i * .35}s infinite`, filter: "blur(1px)" }} />)}</div>}
                 {lang.channels.map((ch) => (
                   <VSlider key={ch.id} value={getVal(ch.id)} onChange={(v) => setOverrides((p) => ({ ...p, [ch.id]: v }))} color={lang.color} label={ch.scent} icon={ch.icon} note={ch.note} code={ch.code} glow={isDiffusing} />
                 ))}
-                <div style={{ width: "1px", background: "#1a1a1a", margin: "20px 2px", alignSelf: "stretch" }} />
+                <div style={{ width: "1px", background: "#333", margin: "20px 2px", alignSelf: "stretch" }} />
                 <VSlider value={smellVal} onChange={(v) => setOverrides((p) => ({ ...p, 4: v }))} color={SMELL_CHANNEL.color} label={SMELL_CHANNEL.scent} icon={SMELL_CHANNEL.icon} note="code smell" code={SMELL_CHANNEL.code} glow={isDiffusing && smellVal > 15} />
               </div>
 
               {analysis && (
-                <div style={{ fontFamily: "var(--mono)", fontSize: "8px", color: "#333", textAlign: "center", lineHeight: "1.6" }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: "8px", color: "#888", textAlign: "center", lineHeight: "1.6" }}>
                   {lang.channels.map((c) => <span key={c.id}>{c.scent} <span style={{ color: lang.color }}>{getVal(c.id)}</span> · </span>)}
                   <span>{SMELL_CHANNEL.scent} <span style={{ color: smellVal > 0 ? SMELL_CHANNEL.color : "#222" }}>{smellVal}</span></span>
                 </div>
@@ -774,8 +774,8 @@ export default function App() {
                 </div>
               </button>
 
-              <div style={{ fontFamily: "var(--mono)", fontSize: "7.5px", color: "#1a1a1a", textAlign: "center", padding: "5px", background: "#060606", borderRadius: "3px", wordBreak: "break-all" }}>
-                <span style={{ color: "#222" }}>{proto.toUpperCase()}</span> {isDiffusing ? cmdStr : "—"}
+              <div style={{ fontFamily: "var(--mono)", fontSize: "7.5px", color: "#999", textAlign: "center", padding: "5px", background: "#060606", borderRadius: "3px", wordBreak: "break-all" }}>
+                <span style={{ color: "#aaa" }}>{proto.toUpperCase()}</span> {isDiffusing ? cmdStr : "—"}
               </div>
             </div>
           </div>
@@ -785,7 +785,7 @@ export default function App() {
             <div style={{ fontFamily: "var(--mono)", fontSize: "6.5px", color: "#181818", letterSpacing: "2px", marginBottom: "3px" }}>ALL 6 CHANNELS</div>
             <div style={{ display: "flex", gap: "3px" }}>
               {[1, 2, 3, 4, 5, 6].map((id) => {
-                let val = 0, col = "#1a1a1a", isActive = false, label = "";
+                let val = 0, col = "#333", isActive = false, label = "";
                 if (id === 4) { val = smellVal; col = SMELL_CHANNEL.color; isActive = true; label = "☠"; }
                 else { Object.values(LANGS).forEach((l) => l.channels.forEach((c) => { if (c.id === id) { col = l.color; label = c.icon; if (sel && l === LANGS[sel]) { val = getVal(id); isActive = true; } } })); }
                 return (
@@ -804,10 +804,10 @@ export default function App() {
       {/* EMPTY */}
       {!lang && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "44px 16px", animation: "fadeIn .5s" }}>
-          <p style={{ fontFamily: "var(--serif)", fontSize: "17px", fontWeight: 300, color: "#252525", fontStyle: "italic", textAlign: "center", lineHeight: "1.9" }}>
+          <p style={{ fontFamily: "var(--serif)", fontSize: "17px", fontWeight: 300, color: "#888", fontStyle: "italic", textAlign: "center", lineHeight: "1.9" }}>
             Мёртвые языки нельзя запустить.<br />Но можно вдохнуть.
           </p>
-          <p style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#131313", letterSpacing: "4px", marginTop: "14px" }}>PYTHON · FORTRAN I · COBOL</p>
+          <p style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#888", letterSpacing: "4px", marginTop: "14px" }}>PYTHON · FORTRAN I · COBOL</p>
           <div style={{ display: "flex", gap: "4px", marginTop: "28px" }}>
             {[LANGS.python.color, LANGS.python.color, LANGS.fortran.color, SMELL_CHANNEL.color, LANGS.cobol.color, LANGS.cobol.color].map((c, i) => (
               <div key={i} style={{ width: "22px", height: "3px", background: c, opacity: 0.2, borderRadius: "1px" }} />
