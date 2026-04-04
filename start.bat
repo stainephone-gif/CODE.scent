@@ -1,22 +1,21 @@
 @echo off
-chcp 65001 >nul
 title source.scent
-
-echo.
-echo   source.scent — запуск...
-echo.
 
 cd /d "%~dp0"
 
 if not exist node_modules (
-    echo   Первый запуск: установка зависимостей...
-    echo.
+    echo Installing dependencies...
     call npm install
+    if errorlevel 1 (
+        echo npm install failed. Make sure Node.js is installed.
+        pause
+        exit /b 1
+    )
     echo.
 )
 
-echo   Открываю http://localhost:5173
-echo   Для остановки нажмите Ctrl+C в этом окне
+echo Starting source.scent at http://localhost:5173
+echo Press Ctrl+C to stop
 echo.
 
 start "" http://localhost:5173
