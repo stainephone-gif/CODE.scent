@@ -66,8 +66,8 @@ C     FIXED FORMAT: COLS 7-72
     philosophy: "Язык, который никто не пишет, но невозможно выключить. 95% банкоматов.",
     color: "#A0826D", dim: "#A0826D11",
     channels: [
-      { id: 5, scent: "Табак + кофе", code: "MA/1547+MA/1149", note: "верхняя", icon: "🚬", base: 65, env: "торговый зал" },
-      { id: 6, scent: "[в подборе]", code: "TBD", note: "базовая", icon: "🏛", base: 60, env: "кабинет" },
+      { id: 5, scent: "Табак", code: "MA/1547", note: "верхняя", icon: "🚬", base: 65, env: "торговый зал" },
+      { id: 6, scent: "Кожа", code: "MA/1622", note: "базовая", icon: "🏛", base: 60, env: "кабинет" },
     ],
     sample: `       IDENTIFICATION DIVISION.
        PROGRAM-ID. FIBONACCI.
@@ -115,7 +115,8 @@ function analyzeCode(code, lang) {
   }).length;
   const emptyLines = allLines.filter((l) => l.trim().length === 0).length;
   const airRatio = (commentLines + emptyLines) / Math.max(allLines.length, 1);
-  const depths = lines.map((l) => { const m = l.match(/^(\s+)/); return m ? Math.floor(m[1].replace(/\t/g, "    ").length / 2) : 0; });
+  const baseIndent = lang.name === "COBOL" ? 3 : lang.name === "FORTRAN I" ? 3 : 0;
+  const depths = lines.map((l) => { const m = l.match(/^(\s+)/); return m ? Math.max(0, Math.floor(m[1].replace(/\t/g, "    ").length / 2) - baseIndent) : 0; });
   const maxDepth = Math.max(...depths, 0);
   const kw = lang.keywords;
   const branchCount = lines.filter((l) => kw.branch.some((k) => new RegExp("\\b" + k + "\\b", "i").test(l))).length;
@@ -141,7 +142,7 @@ function analyzeCode(code, lang) {
   if (deepLines > 0) { smells.push({ text: `Вложенность >4: ${deepLines} строк`, weight: deepLines * 4 }); smellScore += deepLines * 4; }
 
   const magicNums = code.match(/(?<![a-zA-Z_\d.])\d{2,}(?!\d*[.eE]\d)(?![a-zA-Z_])/g) || [];
-  const realMagic = magicNums.filter((n) => !["00", "10", "20", "21", "100", "1000", "255", "256", "1024"].includes(n));
+  const realMagic = magicNums.filter((n) => !["00", "01", "02", "05", "10", "20", "21", "77", "88", "99", "100", "1000", "255", "256", "1024"].includes(n));
   if (realMagic.length > 2) { smells.push({ text: `Магические числа: ${realMagic.slice(0, 5).join(", ")}`, weight: realMagic.length * 2 }); smellScore += realMagic.length * 2; }
 
   if (lang.name === "Python") {
@@ -570,25 +571,34 @@ export default function App() {
         @keyframes rise{0%{opacity:0;transform:translateY(0)}12%{opacity:.4}100%{opacity:0;transform:translateY(-60px) scale(.1)}}
         *{box-sizing:border-box;margin:0}::-webkit-scrollbar{width:3px;height:3px}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:2px}textarea:focus,input:focus{outline:none}
         @media(max-width:900px){
-          .sc-header{flex-direction:column!important;align-items:flex-start!important;gap:8px!important}
-          .sc-header-right{width:100%;justify-content:space-between!important;flex-wrap:wrap!important}
+          .sc-header{flex-direction:column!important;align-items:flex-start!important;gap:10px!important}
+          .sc-header-right{width:100%;justify-content:space-between!important;flex-wrap:wrap!important;gap:6px!important}
+          .sc-header-right button{font-size:11px!important;padding:6px 12px!important}
           .sc-main-grid{grid-template-columns:1fr!important}
-          .sc-lang-cards{grid-template-columns:repeat(3,1fr)!important;gap:4px!important}
-          .sc-lang-cards button{padding:8px 6px!important}
+          .sc-lang-cards{grid-template-columns:repeat(3,1fr)!important;gap:6px!important}
+          .sc-lang-cards button{padding:12px 10px!important}
+          .sc-lang-cards button span{font-size:14px!important}
           .sc-mod-grid{grid-template-columns:repeat(3,1fr)!important}
-          .sc-code-pre{max-height:160px!important;font-size:9px!important}
+          .sc-mod-grid>div span{font-size:11px!important}
+          .sc-code-pre{max-height:140px!important;font-size:12px!important;line-height:1.5!important}
           .sc-mixer{min-width:0!important}
-          .sc-philosophy{font-size:11px!important}
-          .sc-cfg-wrap{flex-direction:column!important;gap:6px!important}
-          .sc-cfg-wrap input{width:100%!important;min-width:0!important}
-          .sc-slider-row{gap:4px!important}
-          .sc-slider-col{min-width:52px!important}
-          .sc-slider-track{height:100px!important}
+          .sc-mixer>div{font-size:10px!important}
+          .sc-philosophy{font-size:14px!important}
+          .sc-cfg-wrap{flex-direction:column!important;gap:8px!important}
+          .sc-cfg-wrap input{width:100%!important;min-width:0!important;font-size:14px!important;padding:8px!important}
+          .sc-cfg-wrap button{font-size:12px!important;padding:8px 16px!important;width:100%!important}
+          .sc-cfg-wrap>div>div{font-size:10px!important}
+          .sc-slider-row{gap:6px!important}
+          .sc-slider-col{min-width:48px!important}
+          .sc-slider-col>span{font-size:12px!important}
+          .sc-slider-track{height:100px!important;width:32px!important}
           .sc-serial-btns{flex-wrap:wrap!important}
-          .sc-diffuse-btn{font-size:14px!important;padding:0!important}
-          .sc-diffuse-btn>div{padding:16px!important}
+          .sc-serial-btns button{font-size:11px!important;padding:8px 12px!important}
+          .sc-diffuse-btn{font-size:16px!important}
+          .sc-diffuse-btn>div{padding:18px!important}
+          .sc-smell-panel span{font-size:11px!important}
         }
-        @media(max-width:600px){
+        @media(max-width:500px){
           .sc-lang-cards{grid-template-columns:1fr!important}
           .sc-mod-grid{grid-template-columns:1fr!important}
           .sc-slider-track{height:80px!important}
@@ -764,7 +774,7 @@ export default function App() {
               )}
 
               {analysis && analysis.smells.length > 0 && (
-                <div style={{ animation: "fadeIn .25s", background: "#0a0606", border: `1px solid ${SMELL_CHANNEL.color}22`, borderRadius: "5px", padding: "8px" }}>
+                <div className="sc-smell-panel" style={{ animation: "fadeIn .25s", background: "#0a0606", border: `1px solid ${SMELL_CHANNEL.color}22`, borderRadius: "5px", padding: "8px" }}>
                   <div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: SMELL_CHANNEL.color + "88", letterSpacing: "2px", marginBottom: "4px" }}>☠ CODE SMELL — CH4: {analysis.smellScore}%</div>
                   {analysis.smells.map((s, i) => (
                     <div key={i} style={{ display: "flex", gap: "6px", alignItems: "baseline", padding: "3px 0" }}>
