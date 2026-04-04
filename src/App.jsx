@@ -283,52 +283,103 @@ function useBleConnection() {
 function useSerialConnection() {
   const portRef = useRef(null);
   const writerRef = useRef(null);
+  const readerRef = useRef(null);
+  const readLoopRef = useRef(false);
   const [status, setStatus] = useState(CONN.disconnected);
   const [error, setError] = useState("");
+  const [log, setLog] = useState([]);
+  const lastCfgRef = useRef(null);
+
+  const appendLog = useCallback((entry) => {
+    setLog((prev) => {
+      const next = [...prev, { ...entry, ts: Date.now() }];
+      return next.length > 50 ? next.slice(-50) : next;
+    });
+  }, []);
+
+  const startReader = useCallback(async (port) => {
+    if (!port.readable) return;
+    readLoopRef.current = true;
+    const decoder = new TextDecoderStream();
+    const readableStream = port.readable.pipeTo(decoder.writable);
+    const reader = decoder.readable.getReader();
+    readerRef.current = reader;
+    try {
+      while (readLoopRef.current) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          const lines = value.split("\n").filter((l) => l.trim());
+          lines.forEach((line) => appendLog({ dir: "rx", text: line.trim() }));
+        }
+      }
+    } catch (err) {
+      if (readLoopRef.current) {
+        appendLog({ dir: "sys", text: `Read error: ${err.message}` });
+      }
+    } finally {
+      try { reader.releaseLock(); } catch (_) {}
+      readerRef.current = null;
+    }
+  }, [appendLog]);
+
+  const cleanup = useCallback(async () => {
+    readLoopRef.current = false;
+    if (readerRef.current) { try { await readerRef.current.cancel(); } catch (_) {} readerRef.current = null; }
+    if (writerRef.current) { try { writerRef.current.releaseLock(); } catch (_) {} writerRef.current = null; }
+    if (portRef.current) { try { await portRef.current.close(); } catch (_) {} portRef.current = null; }
+  }, []);
 
   const connect = useCallback(async (cfg) => {
     if (!navigator.serial) { setError("Web Serial not supported. Use Chrome/Edge."); setStatus(CONN.error); return; }
     try {
       setStatus(CONN.connecting); setError("");
+      lastCfgRef.current = cfg;
       const port = await navigator.serial.requestPort();
       await port.open({ baudRate: parseInt(cfg.baudRate) || 115200 });
       portRef.current = port;
       const writer = port.writable.getWriter();
       writerRef.current = writer;
+      startReader(port);
+      port.addEventListener("disconnect", () => {
+        appendLog({ dir: "sys", text: "USB disconnected" });
+        setStatus(CONN.error); setError("Device unplugged");
+        cleanup();
+      });
       setStatus(CONN.connected);
+      appendLog({ dir: "sys", text: `Connected @ ${cfg.baudRate} baud` });
     } catch (err) {
       if (err.name === "NotFoundError") { setError("No port selected"); }
       else { setError(err.message || "Serial error"); }
       setStatus(CONN.error);
     }
-  }, []);
+  }, [startReader, cleanup, appendLog]);
 
   const disconnect = useCallback(async () => {
-    try {
-      if (writerRef.current) { writerRef.current.releaseLock(); writerRef.current = null; }
-      if (portRef.current) { await portRef.current.close(); portRef.current = null; }
-    } catch (_) {}
+    appendLog({ dir: "sys", text: "Disconnected by user" });
+    await cleanup();
     setStatus(CONN.disconnected); setError("");
-  }, []);
+  }, [cleanup, appendLog]);
 
   const write = useCallback(async (message) => {
     if (!writerRef.current) return false;
     try {
       const encoder = new TextEncoder();
       await writerRef.current.write(encoder.encode(message + "\n"));
+      appendLog({ dir: "tx", text: message });
       return true;
     } catch (err) {
       setError(err.message); setStatus(CONN.error);
+      appendLog({ dir: "sys", text: `Write error: ${err.message}` });
       return false;
     }
-  }, []);
+  }, [appendLog]);
 
-  useEffect(() => () => {
-    if (writerRef.current) { try { writerRef.current.releaseLock(); } catch (_) {} }
-    if (portRef.current) { try { portRef.current.close(); } catch (_) {} }
-  }, []);
+  const clearLog = useCallback(() => setLog([]), []);
 
-  return { status, error, connect, disconnect, write };
+  useEffect(() => () => { readLoopRef.current = false; cleanup(); }, [cleanup]);
+
+  return { status, error, connect, disconnect, write, log, clearLog };
 }
 
 // ── Vertical Slider ────────────────────────────────────────
@@ -526,6 +577,34 @@ export default function App() {
             </div>
           )}
           {conn.error && <div style={{ fontFamily: "var(--mono)", fontSize: "8px", color: CONN_COLORS.error, marginTop: "6px" }}>{conn.error}</div>}
+
+          {/* SERIAL DIAGNOSTIC LOG */}
+          {proto === "serial" && serialConn.log.length > 0 && (
+            <div style={{ marginTop: "8px", borderTop: "1px solid #141414", paddingTop: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                <span style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", letterSpacing: "2px" }}>SERIAL LOG</span>
+                <button onClick={serialConn.clearLog} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "2px 6px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "7px", color: "#333" }}>CLEAR</button>
+              </div>
+              <div style={{ maxHeight: "120px", overflowY: "auto", background: "#060606", borderRadius: "3px", padding: "4px 6px" }}>
+                {serialConn.log.map((entry, i) => (
+                  <div key={i} style={{ fontFamily: "var(--mono)", fontSize: "8px", lineHeight: "1.6", color: entry.dir === "tx" ? "#a08030" : entry.dir === "rx" ? "#30a040" : "#555" }}>
+                    <span style={{ color: "#222", marginRight: "4px" }}>{new Date(entry.ts).toLocaleTimeString("en", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                    <span style={{ color: entry.dir === "tx" ? "#a08030" : entry.dir === "rx" ? "#30a040" : "#E04040", marginRight: "4px" }}>{entry.dir === "tx" ? "TX" : entry.dir === "rx" ? "RX" : "!!"}</span>
+                    {entry.text}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TEST PING BUTTON */}
+          {proto === "serial" && isConnected && (
+            <div style={{ marginTop: "6px", display: "flex", gap: "6px" }}>
+              <button onClick={() => serialConn.write("PING")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>PING</button>
+              <button onClick={() => serialConn.write("CH1:50;CH2:50;CH3:50;CH4:50;CH5:50;CH6:50")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>TEST 50%</button>
+              <button onClick={() => serialConn.write("CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0")} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "8px", color: "#555", letterSpacing: "1px" }}>ALL OFF</button>
+            </div>
+          )}
         </div>
       )}
 
