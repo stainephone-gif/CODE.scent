@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import mqtt from "mqtt";
 
 // ═══════════════════════════════════════════════════════════════
-// source.scent v0.4
-// 3 languages · 6 channels · SensoryLab 6ch
+// source.scent v0.5
+// 3 languages · 6 channels · SensoryLab 6ch + NeuroAir
 // Python(2) + FORTRAN I(1) + CODE SMELL(1) + COBOL(2)
+// MQTT (WebSocket) + Web Bluetooth
 // ═══════════════════════════════════════════════════════════════
 
 const LANGS = {
@@ -185,6 +187,99 @@ function computeChannelValues(lang, analysis) {
 function buildMqtt(ch) { return ch.map((c) => `CH${c.id}:${c.value}`).join(";"); }
 function buildBle(ch) { return ch.map((c) => `${c.id}=${c.value}`).join(","); }
 
+// ── Device Connection ──────────────────────────────────────
+const CONN = { disconnected: "disconnected", connecting: "connecting", connected: "connected", error: "error" };
+const CONN_COLORS = { disconnected: "#3a3a3a", connecting: "#a08030", connected: "#30a040", error: "#E04040" };
+const CONN_LABELS = { disconnected: "OFF", connecting: "LINK", connected: "LIVE", error: "ERR" };
+
+function useMqttConnection() {
+  const clientRef = useRef(null);
+  const [status, setStatus] = useState(CONN.disconnected);
+  const [error, setError] = useState("");
+
+  const connect = useCallback((cfg) => {
+    if (clientRef.current) { clientRef.current.end(true); clientRef.current = null; }
+    setStatus(CONN.connecting); setError("");
+    const url = `ws://${cfg.host}:${cfg.port}/mqtt`;
+    const client = mqtt.connect(url, { connectTimeout: 5000, reconnectPeriod: 3000 });
+    clientRef.current = client;
+    client.on("connect", () => setStatus(CONN.connected));
+    client.on("error", (err) => { setError(err.message || "MQTT error"); setStatus(CONN.error); });
+    client.on("close", () => { if (clientRef.current === client) setStatus(CONN.disconnected); });
+    client.on("offline", () => setStatus(CONN.disconnected));
+  }, []);
+
+  const disconnect = useCallback(() => {
+    if (clientRef.current) { clientRef.current.end(true); clientRef.current = null; }
+    setStatus(CONN.disconnected); setError("");
+  }, []);
+
+  const publish = useCallback((topic, message) => {
+    if (clientRef.current && clientRef.current.connected) {
+      clientRef.current.publish(topic, message);
+      return true;
+    }
+    return false;
+  }, []);
+
+  useEffect(() => () => { if (clientRef.current) clientRef.current.end(true); }, []);
+
+  return { status, error, connect, disconnect, publish };
+}
+
+function useBleConnection() {
+  const deviceRef = useRef(null);
+  const charRef = useRef(null);
+  const [status, setStatus] = useState(CONN.disconnected);
+  const [error, setError] = useState("");
+
+  const connect = useCallback(async (cfg) => {
+    if (!navigator.bluetooth) { setError("Web Bluetooth not supported. Use Chrome/Edge."); setStatus(CONN.error); return; }
+    try {
+      setStatus(CONN.connecting); setError("");
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ name: cfg.device }],
+        optionalServices: [cfg.service],
+      });
+      deviceRef.current = device;
+      device.addEventListener("gattserverdisconnected", () => {
+        charRef.current = null;
+        setStatus(CONN.disconnected);
+      });
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(cfg.service);
+      const characteristic = await service.getCharacteristic(cfg.char);
+      charRef.current = characteristic;
+      setStatus(CONN.connected);
+    } catch (err) {
+      if (err.name === "NotFoundError") { setError("Device not found"); }
+      else if (err.name === "SecurityError") { setError("Bluetooth blocked by browser"); }
+      else { setError(err.message || "BLE error"); }
+      setStatus(CONN.error);
+    }
+  }, []);
+
+  const disconnect = useCallback(() => {
+    if (deviceRef.current?.gatt?.connected) deviceRef.current.gatt.disconnect();
+    charRef.current = null; deviceRef.current = null;
+    setStatus(CONN.disconnected); setError("");
+  }, []);
+
+  const write = useCallback(async (message) => {
+    if (!charRef.current) return false;
+    try {
+      const encoder = new TextEncoder();
+      await charRef.current.writeValue(encoder.encode(message));
+      return true;
+    } catch (err) {
+      setError(err.message); setStatus(CONN.error);
+      return false;
+    }
+  }, []);
+
+  return { status, error, connect, disconnect, write };
+}
+
 // ── Vertical Slider ────────────────────────────────────────
 function VSlider({ value, onChange, color, label, icon, note, disabled, glow, code }) {
   const ref = useRef(null); const drag = useRef(false);
@@ -227,9 +322,14 @@ export default function App() {
   const [overrides, setOverrides] = useState({});
   const [isDiffusing, setIsDiffusing] = useState(false);
   const [proto, setProto] = useState("mqtt");
-  const [mqtt, setMqtt] = useState({ host: "192.168.1.100", port: "1883", topic: "sensorylab/ctrl" });
-  const [ble, setBle] = useState({ device: "SensoryLab-6CH", service: "ffe0", char: "ffe1" });
+  const [mqttCfg, setMqttCfg] = useState({ host: "192.168.1.100", port: "9001", topic: "sensorylab/ctrl" });
+  const [bleCfg, setBleCfg] = useState({ device: "SensoryLab-6CH", service: "ffe0", char: "ffe1" });
   const [showCfg, setShowCfg] = useState(false);
+
+  const mqttConn = useMqttConnection();
+  const bleConn = useBleConnection();
+  const conn = proto === "mqtt" ? mqttConn : bleConn;
+  const isConnected = conn.status === CONN.connected;
 
   const lang = sel ? LANGS[sel] : null;
   const code = mode === "custom" && custom.trim() ? custom : lang?.sample || "";
@@ -248,10 +348,43 @@ export default function App() {
 
   const cmdStr = useMemo(() => allChannels.length ? (proto === "mqtt" ? buildMqtt(allChannels) : buildBle(allChannels)) : "", [allChannels, proto]);
 
-  useEffect(() => { if (isDiffusing && cmdStr) console.log(`${proto.toUpperCase()} →`, cmdStr); }, [cmdStr, isDiffusing]);
+  // Send commands to device when diffusing
+  useEffect(() => {
+    if (!isDiffusing || !cmdStr) return;
+    console.log(`${proto.toUpperCase()} →`, cmdStr);
+    if (isConnected) {
+      if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, cmdStr);
+      else bleConn.write(cmdStr);
+    }
+  }, [cmdStr, isDiffusing]);
 
-  const handleDiffuse = () => { if (!lang) return; if (isDiffusing) { setIsDiffusing(false); setOverrides({}); } else setIsDiffusing(true); };
-  const selectLang = (k) => { setIsDiffusing(false); setOverrides({}); setCustom(""); setMode("sample"); setSel(sel === k ? null : k); };
+  // Stop all channels on stop
+  const sendStop = useCallback(() => {
+    const stopCmd = proto === "mqtt"
+      ? "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0"
+      : "1=0,2=0,3=0,4=0,5=0,6=0";
+    if (isConnected) {
+      if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, stopCmd);
+      else bleConn.write(stopCmd);
+    }
+  }, [proto, isConnected, mqttCfg.topic]);
+
+  const handleConnect = () => {
+    if (conn.status === CONN.connected || conn.status === CONN.connecting) {
+      if (isDiffusing) { sendStop(); setIsDiffusing(false); setOverrides({}); }
+      if (proto === "mqtt") mqttConn.disconnect(); else bleConn.disconnect();
+    } else {
+      if (proto === "mqtt") mqttConn.connect(mqttCfg); else bleConn.connect(bleCfg);
+    }
+  };
+
+  const handleDiffuse = () => {
+    if (!lang) return;
+    if (isDiffusing) { sendStop(); setIsDiffusing(false); setOverrides({}); }
+    else setIsDiffusing(true);
+  };
+
+  const selectLang = (k) => { if (isDiffusing) sendStop(); setIsDiffusing(false); setOverrides({}); setCustom(""); setMode("sample"); setSel(sel === k ? null : k); };
 
   return (
     <div style={{ "--mono": "'JetBrains Mono',ui-monospace,'Fira Code',monospace", "--serif": "'Cormorant Garamond','Georgia',serif", minHeight: "100vh", background: "#050505", color: "#ddd", fontFamily: "var(--serif)" }}>
@@ -283,6 +416,10 @@ export default function App() {
             <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: isDiffusing ? lang?.color : "#3a3a3a", animation: isDiffusing ? "pulse 1.4s infinite" : "none" }} />
             <span style={{ fontFamily: "var(--mono)", fontSize: "8px", color: isDiffusing ? lang?.color : "#333", letterSpacing: "1px" }}>{isDiffusing ? "DIFF" : "STBY"}</span>
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "10px", background: "#0a0a0a", border: `1px solid ${CONN_COLORS[conn.status]}33`, cursor: "pointer" }} onClick={handleConnect} title={conn.error || (isConnected ? "Disconnect" : "Connect")}>
+            <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: CONN_COLORS[conn.status], animation: conn.status === CONN.connecting ? "pulse 0.8s infinite" : "none" }} />
+            <span style={{ fontFamily: "var(--mono)", fontSize: "7px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>{CONN_LABELS[conn.status]}</span>
+          </div>
           <button onClick={() => setShowCfg(!showCfg)} style={{ background: "none", border: "1px solid #181818", borderRadius: "50%", width: "26px", height: "26px", color: "#333", cursor: "pointer", fontSize: "11px", display: "flex", alignItems: "center", justifyContent: "center" }}>⚙</button>
         </div>
       </header>
@@ -291,20 +428,27 @@ export default function App() {
       {showCfg && (
         <div style={{ margin: "10px 16px", padding: "10px", background: "#090909", border: "1px solid #141414", borderRadius: "6px", animation: "fadeIn .25s" }}>
           {proto === "mqtt" ? (
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {[{ l: "Host", k: "host", w: "140px" }, { l: "Port", k: "port", w: "55px" }, { l: "Topic", k: "topic", w: "155px" }].map((f) => (
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+              {[{ l: "Host (WebSocket)", k: "host", w: "140px" }, { l: "WS Port", k: "port", w: "55px" }, { l: "Topic", k: "topic", w: "155px" }].map((f) => (
                 <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", marginBottom: "2px" }}>{f.l}</div>
-                <input value={mqtt[f.k]} onChange={(e) => setMqtt({ ...mqtt, [f.k]: e.target.value })} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "3px 6px", color: "#555", fontFamily: "var(--mono)", fontSize: "10px", width: f.w }} /></div>
+                <input value={mqttCfg[f.k]} onChange={(e) => setMqttCfg({ ...mqttCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "3px 6px", color: "#555", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
               ))}
+              <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "9px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
+                {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
+              </button>
             </div>
           ) : (
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {[{ l: "Device", k: "device", w: "150px" }, { l: "Service", k: "service", w: "80px" }, { l: "Char", k: "char", w: "80px" }].map((f) => (
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+              {[{ l: "Device", k: "device", w: "150px" }, { l: "Service UUID", k: "service", w: "80px" }, { l: "Char UUID", k: "char", w: "80px" }].map((f) => (
                 <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "7px", color: "#2a2a2a", marginBottom: "2px" }}>{f.l}</div>
-                <input value={ble[f.k]} onChange={(e) => setBle({ ...ble, [f.k]: e.target.value })} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "3px 6px", color: "#555", fontFamily: "var(--mono)", fontSize: "10px", width: f.w }} /></div>
+                <input value={bleCfg[f.k]} onChange={(e) => setBleCfg({ ...bleCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#0c0c0c", border: "1px solid #181818", borderRadius: "3px", padding: "3px 6px", color: "#555", fontFamily: "var(--mono)", fontSize: "10px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
               ))}
+              <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "9px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
+                {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
+              </button>
             </div>
           )}
+          {conn.error && <div style={{ fontFamily: "var(--mono)", fontSize: "8px", color: CONN_COLORS.error, marginTop: "6px" }}>{conn.error}</div>}
         </div>
       )}
 
