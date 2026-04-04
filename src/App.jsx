@@ -186,14 +186,11 @@ function computeChannelValues(lang, analysis) {
 
 function buildMqtt(ch) { return ch.map((c) => `CH${c.id}:${c.value}`).join(";"); }
 function buildBle(ch) { return ch.map((c) => `${c.id}=${c.value}`).join(","); }
+function buildSerialEnable(ch) {
+  return ch.map((c) => `e ${c.id - 1}`).join("\n");
+}
 function buildSerial(ch) {
-  const cmds = [];
-  ch.forEach((c) => {
-    const devCh = c.id - 1;
-    cmds.push(`e ${devCh}`);
-    cmds.push(`p ${devCh} 0 ${Math.round(c.value / 100 * 4095)}`);
-  });
-  return cmds.join("\n");
+  return ch.map((c) => `p ${c.id - 1} 0 ${Math.round(c.value / 100 * 4095)}`).join("\n");
 }
 
 // ── Device Connection ──────────────────────────────────────
@@ -484,35 +481,39 @@ export default function App() {
   }, [allChannels, proto]);
 
   // Send commands to device when diffusing
-  const sendCmd = useCallback(() => {
+  const sendCmdRef = useRef(null);
+  sendCmdRef.current = () => {
     if (!isDiffusing || !cmdStr || !isConnected) return;
-    console.log(`${proto.toUpperCase()} →`, cmdStr);
     if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, cmdStr);
     else if (proto === "ble") bleConn.write(cmdStr);
     else serialConn.write(cmdStr);
-  }, [isDiffusing, cmdStr, isConnected, proto, mqttConn, bleConn, serialConn, mqttCfg.topic]);
+  };
 
-  // Send on value change or connection change
-  useEffect(() => { sendCmd(); }, [sendCmd]);
+  // Send once when diffusion starts or values change
+  const prevCmdRef = useRef("");
+  useEffect(() => {
+    if (!isDiffusing || !cmdStr || !isConnected) return;
+    if (cmdStr === prevCmdRef.current) return;
+    prevCmdRef.current = cmdStr;
+    sendCmdRef.current();
+  }, [isDiffusing, cmdStr, isConnected]);
 
   // Periodic resend every 2s while diffusing (keep-alive)
   useEffect(() => {
     if (!isDiffusing || !isConnected) return;
-    const iv = setInterval(sendCmd, 2000);
+    const iv = setInterval(() => sendCmdRef.current(), 2000);
     return () => clearInterval(iv);
-  }, [isDiffusing, isConnected, sendCmd]);
+  }, [isDiffusing, isConnected]);
 
-  // Stop all channels on stop
+  // Stop all channels on stop (always try, even if connection errored)
   const sendStop = useCallback(() => {
-    if (!isConnected) return;
-    if (proto === "mqtt") {
-      mqttConn.publish(mqttCfg.topic, "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0");
-    } else if (proto === "ble") {
-      bleConn.write("r");
-    } else {
-      serialConn.write("r");
-    }
-  }, [proto, isConnected, mqttCfg.topic]);
+    try {
+      if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0");
+      else if (proto === "ble") bleConn.write("r");
+      else serialConn.write("r");
+    } catch (_) {}
+    prevCmdRef.current = "";
+  }, [proto, mqttCfg.topic]);
 
   const handleConnect = () => {
     if (conn.status === CONN.connected || conn.status === CONN.connecting) {
@@ -532,7 +533,15 @@ export default function App() {
   const handleDiffuse = () => {
     if (!lang) return;
     if (isDiffusing) { sendStop(); setIsDiffusing(false); setDiffuseTimer(0); setOverrides({}); }
-    else { setIsDiffusing(true); setDiffuseTimer(DIFFUSE_DURATION); }
+    else {
+      // Enable channels once at start
+      if (isConnected && proto !== "mqtt") {
+        const enableCmd = buildSerialEnable(allChannels);
+        if (proto === "ble") bleConn.write(enableCmd);
+        else serialConn.write(enableCmd);
+      }
+      setIsDiffusing(true); setDiffuseTimer(DIFFUSE_DURATION);
+    }
   };
 
   // Countdown timer — auto-stop when reaches 0
