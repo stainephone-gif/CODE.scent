@@ -466,7 +466,7 @@ export default function App() {
   const computed = useMemo(() => lang && analysis ? computeChannelValues(lang, analysis) : [], [lang, analysis]);
 
   const getVal = (chId) => overrides[chId] !== undefined ? overrides[chId] : (computed.find((c) => c.id === chId)?.value || 0);
-  const smellVal = overrides[4] !== undefined ? overrides[4] : (analysis?.smellScore || 0);
+  const smellVal = overrides[4] !== undefined ? overrides[4] : (sel === "python" ? (analysis?.smellScore || 0) : 0);
 
   const allChannels = useMemo(() => {
     if (!lang) return [];
