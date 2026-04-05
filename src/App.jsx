@@ -40,7 +40,7 @@ for num in fibonacci(21):
     philosophy: "Ни компилятора, ни машины. Язык-призрак, чей синтаксис живёт в потомках.",
     color: "#8B7355", dim: "#8B735511",
     channels: [
-      { id: 3, scent: "Сосна (канифоль)", code: "MP822/W2", note: "базовая", icon: "🔥", base: 70, env: "машинный зал ЭВМ" },
+      { id: 3, scent: "Сосна (канифоль)", code: "MP822/W2", note: "базовая", icon: "√", base: 70, env: "машинный зал ЭВМ" },
     ],
     sample: `C     FORTRAN I — IBM 704 (1957)
 C     COMPUTE FIBONACCI SEQUENCE
