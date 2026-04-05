@@ -150,6 +150,14 @@ function analyzeCode(code, lang) {
     if (ee > 0) { smells.push({ text: `Пустые except: ${ee}`, weight: ee * 10 }); smellScore += ee * 10; }
     const pr = (code.match(/\bprint\s*\(/g) || []).length;
     if (pr > 5) { smells.push({ text: `Избыток print: ${pr}`, weight: Math.min(pr * 2, 15) }); smellScore += Math.min(pr * 2, 15); }
+    const pyKw = /\b(def|class|if|elif|else|for|while|import|from|return|print|try|except|with|as|in|not|and|or|is|None|True|False|self|lambda|yield|raise|pass|break|continue|global|del|assert)\b/;
+    const pySyntax = /[=:(){}\[\]@#]/;
+    const meaningful = lines.filter((l) => l.trim().length > 0);
+    if (meaningful.length >= 3) {
+      const recognized = meaningful.filter((l) => pyKw.test(l) || pySyntax.test(l)).length;
+      const ratio = recognized / meaningful.length;
+      if (ratio < 0.25) { smells.push({ text: "Нераспознаваемый код", weight: 95 }); smellScore += 95; }
+    }
   }
 
   let dupeCount = 0;
