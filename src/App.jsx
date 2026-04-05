@@ -191,7 +191,10 @@ function buildSerialEnable(ch) {
   return ch.map((c) => `e ${c.id - 1}`).join("\n");
 }
 function buildSerial(ch) {
-  return ch.map((c) => `p ${c.id - 1} 0 ${Math.round(c.value / 100 * 4095)}`).join("\n");
+  return ch.map((c) => {
+    const pwm = Math.round(c.value / 100 * 4095);
+    return `p ${c.id - 1} ${pwm} 0`;
+  }).join("\n");
 }
 
 // ── Device Connection ──────────────────────────────────────
