@@ -569,10 +569,10 @@ export default function App() {
   return (
     <div style={{ "--mono": "'JetBrains Mono',ui-monospace,'Fira Code',monospace", "--serif": "'Cormorant Garamond','Georgia',serif", minHeight: "100vh", background: "#0c0c0c", color: "#e8e8e8", fontFamily: "var(--serif)" }}>
       <style>{`
-        @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;src:url('/JetBrainsMono-VariableFont_wght.ttf') format('truetype')}
-        @font-face{font-family:'JetBrains Mono';font-style:italic;font-weight:100 800;src:url('/JetBrainsMono-Italic-VariableFont_wght.ttf') format('truetype')}
-        @font-face{font-family:'Cormorant Garamond';font-style:normal;font-weight:300 700;src:url('/CormorantGaramond-VariableFont_wght.ttf') format('truetype')}
-        @font-face{font-family:'Cormorant Garamond';font-style:italic;font-weight:300 700;src:url('/CormorantGaramond-Italic-VariableFont_wght.ttf') format('truetype')}
+        @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;src:url('./JetBrainsMono-VariableFont_wght.ttf') format('truetype')}
+        @font-face{font-family:'JetBrains Mono';font-style:italic;font-weight:100 800;src:url('./JetBrainsMono-Italic-VariableFont_wght.ttf') format('truetype')}
+        @font-face{font-family:'Cormorant Garamond';font-style:normal;font-weight:300 700;src:url('./CormorantGaramond-VariableFont_wght.ttf') format('truetype')}
+        @font-face{font-family:'Cormorant Garamond';font-style:italic;font-weight:300 700;src:url('./CormorantGaramond-Italic-VariableFont_wght.ttf') format('truetype')}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes glowBtn{0%,100%{box-shadow:0 0 10px var(--gc,transparent)}50%{box-shadow:0 0 25px var(--gc,transparent)}}
