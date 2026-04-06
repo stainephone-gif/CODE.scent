@@ -399,7 +399,11 @@ function useSerialConnection() {
     if (!writerRef.current) return false;
     try {
       const encoder = new TextEncoder();
-      await writerRef.current.write(encoder.encode(message + "\n"));
+      const lines = message.split("\n").filter((l) => l.trim());
+      for (const line of lines) {
+        await writerRef.current.write(encoder.encode(line + "\n"));
+        if (lines.length > 1) await new Promise((r) => setTimeout(r, 50));
+      }
       appendLog({ dir: "tx", text: message });
       return true;
     } catch (err) {
