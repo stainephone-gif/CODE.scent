@@ -486,7 +486,10 @@ export default function App() {
   const cmdStr = useMemo(() => {
     if (!allChannels.length) return "";
     if (proto === "mqtt") return buildMqtt(allChannels);
-    return buildSerial(allChannels);
+    const activeChannels = allChannels.filter((c) => c.value > 0);
+    const enablePart = activeChannels.map((c) => `e ${c.id - 1}`).join("\n");
+    const pwmPart = buildSerial(allChannels);
+    return enablePart ? enablePart + "\n" + pwmPart : pwmPart;
   }, [allChannels, proto]);
 
   // Send commands to device when diffusing
@@ -542,15 +545,7 @@ export default function App() {
   const handleDiffuse = () => {
     if (!lang) return;
     if (isDiffusing) { sendStop(); setIsDiffusing(false); setDiffuseTimer(0); setOverrides({}); }
-    else {
-      // Enable channels once at start
-      if (isConnected && proto !== "mqtt") {
-        const enableCmd = buildSerialEnable(allChannels);
-        if (proto === "ble") bleConn.write(enableCmd);
-        else serialConn.write(enableCmd);
-      }
-      setIsDiffusing(true); setDiffuseTimer(DIFFUSE_DURATION);
-    }
+    else { setIsDiffusing(true); setDiffuseTimer(DIFFUSE_DURATION); }
   };
 
   // Countdown timer — auto-stop when reaches 0
