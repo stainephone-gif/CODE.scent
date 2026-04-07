@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import mqtt from "mqtt";
 
 // ═══════════════════════════════════════════════════════════════
 // CODE.scent v0.5
@@ -193,8 +192,6 @@ function computeChannelValues(lang, analysis) {
   });
 }
 
-function buildMqtt(ch) { return ch.map((c) => `CH${c.id}:${c.value}`).join(";"); }
-function buildBle(ch) { return ch.map((c) => `${c.id}=${c.value}`).join(","); }
 function buildSerialEnable(ch) {
   return ch.map((c) => `e ${c.id - 1}`).join("\n");
 }
@@ -209,103 +206,6 @@ function buildSerial(ch) {
 const CONN = { disconnected: "disconnected", connecting: "connecting", connected: "connected", error: "error" };
 const CONN_COLORS = { disconnected: "#888", connecting: "#a08030", connected: "#30a040", error: "#E04040" };
 const CONN_LABELS = { disconnected: "OFF", connecting: "LINK", connected: "LIVE", error: "ERR" };
-
-function useMqttConnection() {
-  const clientRef = useRef(null);
-  const [status, setStatus] = useState(CONN.disconnected);
-  const [error, setError] = useState("");
-
-  const connect = useCallback((cfg) => {
-    if (clientRef.current) { clientRef.current.end(true); clientRef.current = null; }
-    setStatus(CONN.connecting); setError("");
-    const url = `ws://${cfg.host}:${cfg.port}/mqtt`;
-    const client = mqtt.connect(url, { connectTimeout: 5000, reconnectPeriod: 3000 });
-    clientRef.current = client;
-    client.on("connect", () => setStatus(CONN.connected));
-    client.on("error", (err) => { setError(err.message || "MQTT error"); setStatus(CONN.error); });
-    client.on("close", () => { if (clientRef.current === client) setStatus(CONN.disconnected); });
-    client.on("offline", () => setStatus(CONN.disconnected));
-  }, []);
-
-  const disconnect = useCallback(() => {
-    if (clientRef.current) { clientRef.current.end(true); clientRef.current = null; }
-    setStatus(CONN.disconnected); setError("");
-  }, []);
-
-  const publish = useCallback((topic, message) => {
-    if (clientRef.current && clientRef.current.connected) {
-      clientRef.current.publish(topic, message);
-      return true;
-    }
-    return false;
-  }, []);
-
-  useEffect(() => () => { if (clientRef.current) clientRef.current.end(true); }, []);
-
-  return { status, error, connect, disconnect, publish };
-}
-
-function useBleConnection() {
-  const deviceRef = useRef(null);
-  const charRef = useRef(null);
-  const [status, setStatus] = useState(CONN.disconnected);
-  const [error, setError] = useState("");
-
-  const connect = useCallback(async (cfg) => {
-    if (!navigator.bluetooth) { setError("Web Bluetooth not supported. Use Chrome/Edge."); setStatus(CONN.error); return; }
-    try {
-      setStatus(CONN.connecting); setError("");
-      const filters = [];
-      if (cfg.device) filters.push({ namePrefix: cfg.device });
-      const device = await navigator.bluetooth.requestDevice({
-        filters: filters.length ? filters : undefined,
-        acceptAllDevices: filters.length === 0,
-        optionalServices: [cfg.service],
-      });
-      deviceRef.current = device;
-      device.addEventListener("gattserverdisconnected", () => {
-        charRef.current = null;
-        setStatus(CONN.disconnected);
-      });
-      const server = await device.gatt.connect();
-      const service = await server.getPrimaryService(cfg.service);
-      const characteristic = await service.getCharacteristic(cfg.char);
-      charRef.current = characteristic;
-      setStatus(CONN.connected);
-    } catch (err) {
-      if (err.name === "NotFoundError") { setError("Device not found. Check name/UUID."); }
-      else if (err.name === "SecurityError") { setError("Bluetooth blocked by browser"); }
-      else { setError(err.message || "BLE error"); }
-      setStatus(CONN.error);
-    }
-  }, []);
-
-  const disconnect = useCallback(() => {
-    if (deviceRef.current?.gatt?.connected) deviceRef.current.gatt.disconnect();
-    charRef.current = null; deviceRef.current = null;
-    setStatus(CONN.disconnected); setError("");
-  }, []);
-
-  const write = useCallback(async (message) => {
-    if (!charRef.current) return false;
-    const encoder = new TextEncoder();
-    try {
-      const lines = message.split("\n").filter((l) => l.trim());
-      for (const line of lines) {
-        const data = encoder.encode(line + "\n");
-        try { await charRef.current.writeValueWithoutResponse(data); }
-        catch (_) { await charRef.current.writeValue(data); }
-        if (lines.length > 1) await new Promise((r) => setTimeout(r, 30));
-      }
-      return true;
-    } catch (err) {
-      setError(err.message); setStatus(CONN.error);
-      return false;
-    }
-  }, []);
-
-  return { status, error, connect, disconnect, write };
-}
 
 function useSerialConnection() {
   const portRef = useRef(null);
@@ -459,17 +359,12 @@ export default function App() {
   const [overrides, setOverrides] = useState({});
   const [isDiffusing, setIsDiffusing] = useState(false);
   const [diffuseTimer, setDiffuseTimer] = useState(0);
-  const [proto, setProto] = useState("mqtt");
-  const [mqttCfg, setMqttCfg] = useState({ host: "192.168.1.100", port: "9001", topic: "sensorylab/ctrl" });
-  const [bleCfg, setBleCfg] = useState({ device: "SensoryLab-6CH", service: "ffe0", char: "ffe1" });
   const [serialCfg, setSerialCfg] = useState({ baudRate: "115200" });
   const [serialCmd, setSerialCmd] = useState("");
   const [showCfg, setShowCfg] = useState(false);
 
-  const mqttConn = useMqttConnection();
-  const bleConn = useBleConnection();
   const serialConn = useSerialConnection();
-  const conn = proto === "mqtt" ? mqttConn : proto === "ble" ? bleConn : serialConn;
+  const conn = serialConn;
   const isConnected = conn.status === CONN.connected;
 
   const lang = sel ? LANGS[sel] : null;
@@ -489,20 +384,17 @@ export default function App() {
 
   const cmdStr = useMemo(() => {
     if (!allChannels.length) return "";
-    if (proto === "mqtt") return buildMqtt(allChannels);
     const activeChannels = allChannels.filter((c) => c.value > 0);
     const enablePart = activeChannels.map((c) => `e ${c.id - 1}`).join("\n");
     const pwmPart = buildSerial(allChannels);
     return enablePart ? enablePart + "\n" + pwmPart : pwmPart;
-  }, [allChannels, proto]);
+  }, [allChannels]);
 
   // Send commands to device when diffusing
   const sendCmdRef = useRef(null);
   sendCmdRef.current = () => {
     if (!isDiffusing || !cmdStr || !isConnected) return;
-    if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, cmdStr);
-    else if (proto === "ble") bleConn.write(cmdStr);
-    else serialConn.write(cmdStr);
+    serialConn.write(cmdStr);
   };
 
   // Send once when diffusion starts or values change
@@ -524,23 +416,18 @@ export default function App() {
   // Stop all channels on stop (always try, even if connection errored)
   const sendStop = useCallback(() => {
     try {
-      if (proto === "mqtt") mqttConn.publish(mqttCfg.topic, "CH1:0;CH2:0;CH3:0;CH4:0;CH5:0;CH6:0");
-      else if (proto === "ble") bleConn.write("r");
-      else serialConn.write("r");
+      const stopCmds = [0,1,2,3,4,5].map((c) => `p ${c} 0 0`).join("\n") + "\n" + [0,1,2,3,4,5].map((c) => `d ${c}`).join("\n");
+      serialConn.write(stopCmds);
     } catch (_) {}
     prevCmdRef.current = "";
-  }, [proto, mqttCfg.topic]);
+  }, []);
 
   const handleConnect = () => {
     if (conn.status === CONN.connected || conn.status === CONN.connecting) {
       if (isDiffusing) { sendStop(); setIsDiffusing(false); setDiffuseTimer(0); setOverrides({}); }
-      if (proto === "mqtt") mqttConn.disconnect();
-      else if (proto === "ble") bleConn.disconnect();
-      else serialConn.disconnect();
+      serialConn.disconnect();
     } else {
-      if (proto === "mqtt") mqttConn.connect(mqttCfg);
-      else if (proto === "ble") bleConn.connect(bleCfg);
-      else serialConn.connect(serialCfg);
+      serialConn.connect(serialCfg);
     }
   };
 
@@ -600,13 +487,11 @@ export default function App() {
       <header className="sc-header" style={{ padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ fontFamily: "var(--serif)", fontSize: "32px", fontWeight: 300, letterSpacing: "3px", color: lang ? lang.color : "#888", transition: "color .5s" }}>CODE.scent</h1>
-          <p style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#999", letterSpacing: "2.5px" }}>CODE → AROMA · 6CH · {proto.toUpperCase()}</p>
+          <p style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#999", letterSpacing: "2.5px" }}>CODE → AROMA · 6CH · USB</p>
         </div>
         <div className="sc-header-right" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <div style={{ display: "flex", borderRadius: "8px", overflow: "hidden", border: "1px solid #282828" }}>
-            {["mqtt", "ble", "serial"].map((p) => (
-              <button key={p} onClick={() => setProto(p)} style={{ background: proto === p ? "#151515" : "#080808", border: "none", padding: "3px 8px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "15px", color: proto === p ? "#777" : "#2a2a2a", letterSpacing: "1px" }}>{p === "serial" ? "USB" : p.toUpperCase()}</button>
-            ))}
+            <span style={{ padding: "3px 8px", fontFamily: "var(--mono)", fontSize: "15px", color: "#777", letterSpacing: "1px" }}>USB</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "12px", background: isDiffusing ? (lang?.color || "#555") + "0e" : "#0a0a0a", border: `1px solid ${isDiffusing ? (lang?.color || "#555") + "40" : "#151515"}` }}>
             <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: isDiffusing ? lang?.color : "#888", animation: isDiffusing ? "pulse 1.4s infinite" : "none" }} />
@@ -617,47 +502,24 @@ export default function App() {
             <span style={{ fontFamily: "var(--mono)", fontSize: "15px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>{CONN_LABELS[conn.status]}</span>
           </div>
           <button onClick={() => setShowCfg(!showCfg)} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: "50%", width: "26px", height: "26px", color: "#888", cursor: "pointer", fontSize: "15px", display: "flex", alignItems: "center", justifyContent: "center" }}>⚙</button>
+          <button onClick={() => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: "50%", width: "26px", height: "26px", color: "#888", cursor: "pointer", fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "center" }} title="Fullscreen">⛶</button>
         </div>
       </header>
 
       {/* CONFIG */}
       {showCfg && (
         <div style={{ margin: "10px 16px", padding: "10px", background: "#131313", border: "1px solid #282828", borderRadius: "6px", animation: "fadeIn .25s" }}>
-          {proto === "mqtt" ? (
             <div className="sc-cfg-wrap" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
-              {[{ l: "Host (WebSocket)", k: "host", w: "140px" }, { l: "WS Port", k: "port", w: "55px" }, { l: "Topic", k: "topic", w: "155px" }].map((f) => (
-                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#bbb", marginBottom: "2px" }}>{f.l}</div>
-                <input value={mqttCfg[f.k]} onChange={(e) => setMqttCfg({ ...mqttCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "15px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
-              ))}
-              <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "20px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
+              <div><div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#bbb", marginBottom: "2px" }}>Baud Rate</div>
+              <input value={serialCfg.baudRate} onChange={(e) => setSerialCfg({ ...serialCfg, baudRate: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "15px", width: "80px", opacity: isConnected ? 0.4 : 1 }} /></div>
+              <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `2px solid ${CONN_COLORS[conn.status]}66`, borderRadius: "6px", padding: "8px 18px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "20px", fontWeight: 700, color: CONN_COLORS[conn.status], letterSpacing: "2px" }}>
                 {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
               </button>
             </div>
-          ) : proto === "ble" ? (
-            <div className="sc-cfg-wrap" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
-              {[{ l: "Device", k: "device", w: "150px" }, { l: "Service UUID", k: "service", w: "80px" }, { l: "Char UUID", k: "char", w: "80px" }].map((f) => (
-                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#bbb", marginBottom: "2px" }}>{f.l}</div>
-                <input value={bleCfg[f.k]} onChange={(e) => setBleCfg({ ...bleCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "15px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
-              ))}
-              <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "20px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
-                {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
-              </button>
-            </div>
-          ) : (
-            <div className="sc-cfg-wrap" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
-              {[{ l: "Baud Rate", k: "baudRate", w: "80px" }].map((f) => (
-                <div key={f.k}><div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#bbb", marginBottom: "2px" }}>{f.l}</div>
-                <input value={serialCfg[f.k]} onChange={(e) => setSerialCfg({ ...serialCfg, [f.k]: e.target.value })} disabled={isConnected} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "3px 6px", color: "#999", fontFamily: "var(--mono)", fontSize: "15px", width: f.w, opacity: isConnected ? 0.4 : 1 }} /></div>
-              ))}
-              <button onClick={handleConnect} style={{ background: isConnected ? "#0a1a0a" : "#0c0c0c", border: `1px solid ${CONN_COLORS[conn.status]}44`, borderRadius: "3px", padding: "4px 12px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "20px", color: CONN_COLORS[conn.status], letterSpacing: "1px" }}>
-                {conn.status === CONN.connecting ? "..." : isConnected ? "DISCONNECT" : "CONNECT"}
-              </button>
-            </div>
-          )}
           {conn.error && <div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: CONN_COLORS.error, marginTop: "6px" }}>{conn.error}</div>}
 
           {/* SERIAL DIAGNOSTIC LOG */}
-          {proto === "serial" && serialConn.log.length > 0 && (
+          {serialConn.log.length > 0 && (
             <div style={{ marginTop: "8px", borderTop: "1px solid #282828", paddingTop: "8px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                 <span style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#bbb", letterSpacing: "2px" }}>SERIAL LOG</span>
@@ -676,7 +538,7 @@ export default function App() {
           )}
 
           {/* SERIAL TEST CONTROLS */}
-          {proto === "serial" && isConnected && (
+          {isConnected && (
             <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px" }}>
               <div className="sc-serial-btns" style={{ display: "flex", gap: "6px" }}>
                 <button onClick={() => serialConn.write("h")} style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: "3px", padding: "4px 10px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "15px", color: "#999", letterSpacing: "1px" }}>HELP</button>
@@ -771,16 +633,16 @@ export default function App() {
                 <VSlider value={smellVal} onChange={(v) => setOverrides((p) => ({ ...p, 4: v }))} color={SMELL_CHANNEL.color} icon={SMELL_CHANNEL.icon} glow={isDiffusing && smellVal > 15} />
               </div>
 
-              <button className="sc-diffuse-btn" onClick={handleDiffuse} style={{ background: isDiffusing ? lang.color + "12" : "#0c0c0c", border: `2px solid ${isDiffusing ? lang.color : "#2a2a2a"}`, borderRadius: "7px", padding: "0", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "18px", fontWeight: 500, color: isDiffusing ? lang.color : "#555", letterSpacing: "4px", transition: "all .4s", "--gc": isDiffusing ? lang.color + "40" : "transparent", animation: isDiffusing ? "glowBtn 2s infinite" : "none", position: "relative", overflow: "hidden" }}>
-                {isDiffusing && <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: `${(diffuseTimer / DIFFUSE_DURATION) * 100}%`, background: lang.color + "18", transition: "width 1s linear" }} />}
-                <div style={{ position: "relative", padding: "13px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+              <button className="sc-diffuse-btn" onClick={handleDiffuse} style={{ background: isDiffusing ? lang.color + "20" : lang.color + "15", border: `3px solid ${isDiffusing ? lang.color : lang.color + "60"}`, borderRadius: "10px", padding: "0", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "22px", fontWeight: 700, color: isDiffusing ? "#fff" : lang.color, letterSpacing: "5px", transition: "all .4s", "--gc": isDiffusing ? lang.color + "40" : "transparent", animation: isDiffusing ? "glowBtn 2s infinite" : "none", position: "relative", overflow: "hidden" }}>
+                {isDiffusing && <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: `${(diffuseTimer / DIFFUSE_DURATION) * 100}%`, background: lang.color + "30", transition: "width 1s linear" }} />}
+                <div style={{ position: "relative", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
                   <span>{isDiffusing ? "■ STOP" : "▶ DIFFUSE"}</span>
-                  {isDiffusing && <span style={{ fontSize: "15px", opacity: 0.7, fontVariantNumeric: "tabular-nums", minWidth: "18px" }}>{diffuseTimer}s</span>}
+                  {isDiffusing && <span style={{ fontSize: "18px", opacity: 0.8, fontVariantNumeric: "tabular-nums", minWidth: "22px" }}>{diffuseTimer}s</span>}
                 </div>
               </button>
 
               <div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#999", textAlign: "center", padding: "5px", background: "#060606", borderRadius: "3px", wordBreak: "break-all" }}>
-                <span style={{ color: "#aaa" }}>{proto.toUpperCase()}</span> {isDiffusing ? cmdStr : "—"}
+                <span style={{ color: "#aaa" }}>USB</span> {isDiffusing ? cmdStr : "—"}
               </div>
             </div>
           </div>
