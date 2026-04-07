@@ -667,11 +667,11 @@ export default function App() {
       )}
 
       {showOverlay && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn .3s" }}>
-          <div style={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: "12px", padding: "32px 28px", maxWidth: "360px", textAlign: "center" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", animation: "fadeIn .3s" }}>
+          <div style={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: "12px", padding: "32px 28px", maxWidth: "360px", textAlign: "center", pointerEvents: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>
             <div style={{ fontSize: "48px", marginBottom: "16px" }}>&#x1F4C7;</div>
             <p style={{ fontFamily: "var(--serif)", fontSize: "22px", color: "#e8e8e8", lineHeight: 1.5, marginBottom: "24px" }}>
-              Вставьте перфокарту в щель аромадиффузора в нижней части
+              Выберите язык программирования на аромадиффузоре и вставьте перфокарту в щель устройства в нижней части
             </p>
             <button onClick={() => setShowOverlay(false)} style={{ background: "#222", border: "2px solid #555", borderRadius: "8px", padding: "12px 48px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "20px", fontWeight: 700, color: "#e8e8e8", letterSpacing: "3px", transition: "all .2s" }}
               onMouseEnter={(e) => { e.target.style.background = "#333"; e.target.style.borderColor = "#888"; }}
