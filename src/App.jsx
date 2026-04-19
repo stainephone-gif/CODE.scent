@@ -432,7 +432,7 @@ export default function App() {
     }
   };
 
-  const DIFFUSE_DURATION = 10;
+  const DIFFUSE_DURATION = window.DIFFUSE_SECONDS || 10;
 
   const handleDiffuse = () => {
     if (!lang) return;
