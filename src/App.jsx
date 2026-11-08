@@ -130,7 +130,7 @@ const UI = {
     pastePlaceholder: (name) => `// Paste ${name} code`,
     lines: "lines",
     clean: "✓ Clean code. CH4 is silent.",
-    tagline: ["Dead languages can't be run.", "But they can be inhaled."],
+    tagline: ["Dead languages can't be run.", "But you can breathe them in."],
     overlay: "Choose a programming language on the aroma diffuser and insert the punch card into the slot at the bottom of the device",
     smell: {
       brackets: (list) => `Unbalanced brackets: ${list}`,
