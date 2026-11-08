@@ -3,19 +3,20 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 // ═══════════════════════════════════════════════════════════════
 // CODE.scent v0.5
 // 3 languages · 6 channels · SensoryLab 6ch + NeuroAir
+// UI: RU / EN (toggle in header, or ?lang=en)
 // Python(2) + FORTRAN I(1) + CODE SMELL(1) + COBOL(2)
 // MQTT (WebSocket) + Web Bluetooth + Web Serial (USB)
 // ═══════════════════════════════════════════════════════════════
 
 const LANGS = {
   python: {
-    name: "Python", year: 1991, ext: ".py", status: "живой",
+    name: "Python", year: 1991, ext: ".py", status: "alive",
     author: "Guido van Rossum, CWI Amsterdam",
     philosophy: "Beautiful is better than ugly. Simple is better than complex.",
     color: "#4EC9B0", dim: "#4EC9B011",
     channels: [
-      { id: 1, scent: "Зелёный чай", code: "MA/1439", note: "верхняя", icon: "🍃", base: 75, env: "Zen of Python" },
-      { id: 2, scent: "Капучино", code: "MA/1308", note: "базовая", icon: "☕", base: 55, env: "коворкинг" },
+      { id: 1, scent: { ru: "Зелёный чай", en: "Green tea" }, code: "MA/1439", note: "top", icon: "🍃", base: 75, env: "Zen of Python" },
+      { id: 2, scent: { ru: "Капучино", en: "Cappuccino" }, code: "MA/1308", note: "base", icon: "☕", base: 55, env: { ru: "коворкинг", en: "coworking space" } },
     ],
     sample: `# The Zen of Python
 import this
@@ -34,12 +35,12 @@ for num in fibonacci(21):
     keywords: { branch: ["if", "elif", "else"], loop: ["for", "while"], err: ["except", "finally"] },
   },
   fortran: {
-    name: "FORTRAN I", year: 1957, ext: ".f", status: "мёртв",
-    author: "John Backus, IBM · для IBM 704",
-    philosophy: "Ни компилятора, ни машины. Язык-призрак, чей синтаксис живёт в потомках.",
+    name: "FORTRAN I", year: 1957, ext: ".f", status: "dead",
+    author: { ru: "John Backus, IBM · для IBM 704", en: "John Backus, IBM · for the IBM 704" },
+    philosophy: { ru: "Ни компилятора, ни машины. Язык-призрак, чей синтаксис живёт в потомках.", en: "No compiler, no machine. A ghost language whose syntax lives on in its descendants." },
     color: "#8B7355", dim: "#8B735511",
     channels: [
-      { id: 3, scent: "Сосна (канифоль)", code: "MP822/W2", note: "базовая", icon: "√", base: 70, env: "машинный зал ЭВМ" },
+      { id: 3, scent: { ru: "Сосна (канифоль)", en: "Pine (rosin)" }, code: "MP822/W2", note: "base", icon: "√", base: 70, env: { ru: "машинный зал ЭВМ", en: "mainframe machine room" } },
     ],
     sample: `C     FORTRAN I — IBM 704 (1957)
 C     COMPUTE FIBONACCI SEQUENCE
@@ -60,13 +61,13 @@ C     FIXED FORMAT: COLS 7-72
     keywords: { branch: ["IF", "ELSE", "THEN"], loop: ["DO", "CONTINUE"], err: [] },
   },
   cobol: {
-    name: "COBOL", year: 1959, ext: ".cbl", status: "зомби",
-    author: "Grace Hopper / CODASYL · Пентагон",
-    philosophy: "Язык, который никто не пишет, но невозможно выключить. 95% банкоматов.",
+    name: "COBOL", year: 1959, ext: ".cbl", status: "zombie",
+    author: { ru: "Grace Hopper / CODASYL · Пентагон", en: "Grace Hopper / CODASYL · Pentagon" },
+    philosophy: { ru: "Язык, который никто не пишет, но невозможно выключить. 95% банкоматов.", en: "A language nobody writes, yet nobody can switch off. 95% of ATMs." },
     color: "#A0826D", dim: "#A0826D11",
     channels: [
-      { id: 5, scent: "Табак", code: "MA/1547", note: "верхняя", icon: "🚬", base: 65, env: "торговый зал" },
-      { id: 6, scent: "Кожа", code: "MA/1622", note: "базовая", icon: "🏛", base: 60, env: "кабинет" },
+      { id: 5, scent: { ru: "Табак", en: "Tobacco" }, code: "MA/1547", note: "top", icon: "🚬", base: 65, env: { ru: "торговый зал", en: "trading floor" } },
+      { id: 6, scent: { ru: "Кожа", en: "Leather" }, code: "MA/1622", note: "base", icon: "🏛", base: 60, env: { ru: "кабинет", en: "executive office" } },
     ],
     sample: `       IDENTIFICATION DIVISION.
        PROGRAM-ID. FIBONACCI.
@@ -95,10 +96,77 @@ C     FIXED FORMAT: COLS 7-72
   },
 };
 
-const SMELL_CHANNEL = { id: 4, scent: "Дегтярный", code: "MM2435/16", icon: "☠", color: "#E04040", env: "сгоревшая плата" };
+const SMELL_CHANNEL = { id: 4, scent: { ru: "Дегтярный", en: "Tar" }, code: "MM2435/16", icon: "☠", color: "#E04040", env: { ru: "сгоревшая плата", en: "burnt circuit board" } };
+
+// ── Interface strings (RU / EN) ────────────────────────────
+const UI = {
+  ru: {
+    status: { alive: "живой", dead: "мёртв", zombie: "зомби" },
+    customCode: "свой код ✎",
+    pastePlaceholder: (name) => `// Вставьте ${name} код`,
+    lines: "lines",
+    clean: "✓ Код чист. CH4 молчит.",
+    tagline: ["Мёртвые языки нельзя запустить.", "Но можно вдохнуть."],
+    overlay: "Выберите язык программирования на аромадиффузоре и вставьте перфокарту в щель устройства в нижней части",
+    smell: {
+      brackets: (list) => `Несбалансированные скобки: ${list}`,
+      quote: 'Незакрытая кавычка "',
+      longLines: (n) => `${n} строк > 120 символов`,
+      deep: (n) => `Вложенность >4: ${n} строк`,
+      magic: (list) => `Магические числа: ${list}`,
+      emptyExcept: (n) => `Пустые except: ${n}`,
+      prints: (n) => `Избыток print: ${n}`,
+      unrecognized: "Нераспознаваемый код",
+      dupes: (n) => `Дубликаты: ${n}`,
+      goto: "GO TO",
+      noComments: "Нет комментариев",
+      noStopRun: "Нет STOP RUN",
+      col72: (n) => `${n} строк за колонкой 72`,
+    },
+  },
+  en: {
+    status: { alive: "alive", dead: "dead", zombie: "zombie" },
+    customCode: "your code ✎",
+    pastePlaceholder: (name) => `// Paste ${name} code`,
+    lines: "lines",
+    clean: "✓ Clean code. CH4 is silent.",
+    tagline: ["Dead languages can't be run.", "But they can be inhaled."],
+    overlay: "Choose a programming language on the aroma diffuser and insert the punch card into the slot at the bottom of the device",
+    smell: {
+      brackets: (list) => `Unbalanced brackets: ${list}`,
+      quote: 'Unclosed quote "',
+      longLines: (n) => `${n} line${n === 1 ? "" : "s"} > 120 chars`,
+      deep: (n) => `Nesting >4: ${n} line${n === 1 ? "" : "s"}`,
+      magic: (list) => `Magic numbers: ${list}`,
+      emptyExcept: (n) => `Empty except: ${n}`,
+      prints: (n) => `Too many prints: ${n}`,
+      unrecognized: "Unrecognizable code",
+      dupes: (n) => `Duplicates: ${n}`,
+      goto: "GO TO",
+      noComments: "No comments",
+      noStopRun: "No STOP RUN",
+      col72: (n) => `${n} line${n === 1 ? "" : "s"} past column 72`,
+    },
+  },
+};
+
+// Pick a localized value: plain strings pass through, { ru, en } objects resolve
+const loc = (v, ui) => (v && typeof v === "object" ? v[ui] ?? v.ru : v);
+
+function initialUiLang() {
+  try {
+    const q = new URLSearchParams(window.location.search).get("lang");
+    if (q === "en" || q === "ru") return q;
+  } catch (_) {}
+  try {
+    const saved = localStorage.getItem("codescent.lang");
+    if (saved === "en" || saved === "ru") return saved;
+  } catch (_) {}
+  return "ru";
+}
 
 // ── Code Analyzer ──────────────────────────────────────────
-function analyzeCode(code, lang) {
+function analyzeCode(code, lang, S = UI.ru.smell) {
   if (!code.trim()) return { modulation: { air: 0, complexity: 0, mass: 0 }, smellScore: 0, smells: [], metrics: {} };
   const allLines = code.split("\n");
   const lines = allLines.filter((l) => l.trim().length > 0);
@@ -131,45 +199,45 @@ function analyzeCode(code, lang) {
   let doubleQ = 0;
   for (const ch of code) { if (ch in opens) opens[ch]++; if (ch in closes) opens[closes[ch]]--; if (ch === '"') doubleQ++; }
   const unmatched = Object.entries(opens).filter(([, v]) => v !== 0);
-  if (unmatched.length > 0) { smells.push({ text: `Несбалансированные скобки: ${unmatched.map(([k, v]) => `${k}${v > 0 ? "+" : ""}${v}`).join(", ")}`, weight: 25 }); smellScore += 25; }
-  if (doubleQ % 2 !== 0) { smells.push({ text: 'Незакрытая кавычка "', weight: 20 }); smellScore += 20; }
+  if (unmatched.length > 0) { smells.push({ text: S.brackets(unmatched.map(([k, v]) => `${k}${v > 0 ? "+" : ""}${v}`).join(", ")), weight: 25 }); smellScore += 25; }
+  if (doubleQ % 2 !== 0) { smells.push({ text: S.quote, weight: 20 }); smellScore += 20; }
 
   const longLines = lines.filter((l) => l.length > 120).length;
-  if (longLines > 0) { smells.push({ text: `${longLines} строк > 120 символов`, weight: longLines * 3 }); smellScore += longLines * 3; }
+  if (longLines > 0) { smells.push({ text: S.longLines(longLines), weight: longLines * 3 }); smellScore += longLines * 3; }
 
   const deepLines = depths.filter((d) => d > 4).length;
-  if (deepLines > 0) { smells.push({ text: `Вложенность >4: ${deepLines} строк`, weight: deepLines * 4 }); smellScore += deepLines * 4; }
+  if (deepLines > 0) { smells.push({ text: S.deep(deepLines), weight: deepLines * 4 }); smellScore += deepLines * 4; }
 
   const magicNums = code.match(/(?<![a-zA-Z_\d.])\d{2,}(?!\d*[.eE]\d)(?![a-zA-Z_])/g) || [];
   const realMagic = magicNums.filter((n) => !["00", "01", "02", "05", "10", "20", "21", "77", "88", "99", "100", "1000", "255", "256", "1024"].includes(n));
-  if (realMagic.length > 2) { smells.push({ text: `Магические числа: ${realMagic.slice(0, 5).join(", ")}`, weight: realMagic.length * 2 }); smellScore += realMagic.length * 2; }
+  if (realMagic.length > 2) { smells.push({ text: S.magic(realMagic.slice(0, 5).join(", ")), weight: realMagic.length * 2 }); smellScore += realMagic.length * 2; }
 
   if (lang.name === "Python") {
     const ee = (code.match(/except.*:\s*\n\s*(pass|\.\.\.)\s*$/gm) || []).length;
-    if (ee > 0) { smells.push({ text: `Пустые except: ${ee}`, weight: ee * 10 }); smellScore += ee * 10; }
+    if (ee > 0) { smells.push({ text: S.emptyExcept(ee), weight: ee * 10 }); smellScore += ee * 10; }
     const pr = (code.match(/\bprint\s*\(/g) || []).length;
-    if (pr > 5) { smells.push({ text: `Избыток print: ${pr}`, weight: Math.min(pr * 2, 15) }); smellScore += Math.min(pr * 2, 15); }
+    if (pr > 5) { smells.push({ text: S.prints(pr), weight: Math.min(pr * 2, 15) }); smellScore += Math.min(pr * 2, 15); }
     const pyKw = /\b(def|class|if|elif|else|for|while|import|from|return|print|try|except|with|as|in|not|and|or|is|None|True|False|self|lambda|yield|raise|pass|break|continue|global|del|assert)\b/;
     const pySyntax = /[=:(){}\[\]@#]/;
     const meaningful = lines.filter((l) => l.trim().length > 0);
     if (meaningful.length >= 3) {
       const recognized = meaningful.filter((l) => pyKw.test(l) || pySyntax.test(l)).length;
       const ratio = recognized / meaningful.length;
-      if (ratio < 0.25) { smells.push({ text: "Нераспознаваемый код", weight: 95 }); smellScore += 95; }
+      if (ratio < 0.25) { smells.push({ text: S.unrecognized, weight: 95 }); smellScore += 95; }
     }
   }
 
   let dupeCount = 0;
   for (let i = 1; i < lines.length; i++) { if (lines[i].trim() === lines[i - 1].trim() && lines[i].trim().length > 5) dupeCount++; }
-  if (dupeCount > 2) { smells.push({ text: `Дубликаты: ${dupeCount}`, weight: dupeCount * 4 }); smellScore += dupeCount * 4; }
+  if (dupeCount > 2) { smells.push({ text: S.dupes(dupeCount), weight: dupeCount * 4 }); smellScore += dupeCount * 4; }
 
-  if (/\bgo\s*to\b/i.test(code)) { smells.push({ text: "GO TO", weight: 15 }); smellScore += 15; }
-  if (commentLines === 0 && total > 10) { smells.push({ text: "Нет комментариев", weight: 8 }); smellScore += 8; }
+  if (/\bgo\s*to\b/i.test(code)) { smells.push({ text: S.goto, weight: 15 }); smellScore += 15; }
+  if (commentLines === 0 && total > 10) { smells.push({ text: S.noComments, weight: 8 }); smellScore += 8; }
 
-  if (lang.name === "COBOL" && !/STOP\s+RUN/i.test(code) && total > 5) { smells.push({ text: "Нет STOP RUN", weight: 10 }); smellScore += 10; }
+  if (lang.name === "COBOL" && !/STOP\s+RUN/i.test(code) && total > 5) { smells.push({ text: S.noStopRun, weight: 10 }); smellScore += 10; }
   if (lang.name === "FORTRAN I") {
     const bad72 = lines.filter((l) => l.length > 72).length;
-    if (bad72 > 0) { smells.push({ text: `${bad72} строк за колонкой 72`, weight: bad72 * 5 }); smellScore += bad72 * 5; }
+    if (bad72 > 0) { smells.push({ text: S.col72(bad72), weight: bad72 * 5 }); smellScore += bad72 * 5; }
   }
 
   smellScore = Math.min(smellScore, 95);
@@ -185,8 +253,8 @@ function computeChannelValues(lang, analysis) {
   const { air, complexity, mass } = analysis.modulation;
   return lang.channels.map((c) => {
     let val = c.base;
-    if (c.note === "верхняя") { val += (air / 100) * 18; val += (complexity / 100) * 8; }
-    if (c.note === "базовая") { val -= (air / 100) * 8; val += (mass / 100) * 18; val += (complexity / 100) * 10; }
+    if (c.note === "top") { val += (air / 100) * 18; val += (complexity / 100) * 8; }
+    if (c.note === "base") { val -= (air / 100) * 8; val += (mass / 100) * 18; val += (complexity / 100) * 10; }
     if (lang.channels.length === 1) { val += (mass / 100) * 12; val += (complexity / 100) * 12; val -= (air / 100) * 5; }
     return { id: c.id, value: Math.round(Math.max(5, Math.min(95, val))) };
   });
@@ -363,6 +431,18 @@ export default function App() {
   const [serialCmd, setSerialCmd] = useState("");
   const [showCfg, setShowCfg] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [ui, setUi] = useState(initialUiLang);
+  const T = UI[ui];
+
+  useEffect(() => {
+    document.documentElement.lang = ui;
+    try { localStorage.setItem("codescent.lang", ui); } catch (_) {}
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("lang", ui);
+      window.history.replaceState(null, "", url);
+    } catch (_) {}
+  }, [ui]);
 
   const serialConn = useSerialConnection();
   const conn = serialConn;
@@ -370,7 +450,7 @@ export default function App() {
 
   const lang = sel ? LANGS[sel] : null;
   const code = mode === "custom" && custom.trim() ? custom : lang?.sample || "";
-  const analysis = useMemo(() => lang && code.trim() ? analyzeCode(code, lang) : null, [code, sel, mode]);
+  const analysis = useMemo(() => lang && code.trim() ? analyzeCode(code, lang, T.smell) : null, [code, sel, mode, ui]);
   const computed = useMemo(() => lang && analysis ? computeChannelValues(lang, analysis) : [], [lang, analysis]);
 
   const getVal = (chId) => overrides[chId] !== undefined ? overrides[chId] : (computed.find((c) => c.id === chId)?.value || 0);
@@ -492,6 +572,11 @@ export default function App() {
         </div>
         <div className="sc-header-right" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <div style={{ display: "flex", borderRadius: "8px", overflow: "hidden", border: "1px solid #282828" }}>
+            {["ru", "en"].map((k) => (
+              <button key={k} onClick={() => setUi(k)} style={{ background: ui === k ? "#222" : "none", border: "none", padding: "3px 8px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "15px", color: ui === k ? "#e8e8e8" : "#666", letterSpacing: "1px" }}>{k.toUpperCase()}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", borderRadius: "8px", overflow: "hidden", border: "1px solid #282828" }}>
             <span style={{ padding: "3px 8px", fontFamily: "var(--mono)", fontSize: "15px", color: "#777", letterSpacing: "1px" }}>USB</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "12px", background: isDiffusing ? (lang?.color || "#555") + "0e" : "#0a0a0a", border: `1px solid ${isDiffusing ? (lang?.color || "#555") + "40" : "#151515"}` }}>
@@ -566,7 +651,7 @@ export default function App() {
               {on && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: l.color }} />}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <span style={{ fontFamily: "var(--mono)", fontSize: "20px", fontWeight: 500, color: on ? l.color : "#888" }}>{l.name}</span>
-                <span style={{ fontFamily: "var(--mono)", fontSize: "15px", color: l.status === "мёртв" ? "#4a2020" : l.status === "зомби" ? "#4a3a20" : "#204a2a", padding: "1px 5px", borderRadius: "3px", background: l.status === "мёртв" ? "#1a0808" : l.status === "зомби" ? "#1a1208" : "#081a0a" }}>{l.status}</span>
+                <span style={{ fontFamily: "var(--mono)", fontSize: "15px", color: l.status === "dead" ? "#4a2020" : l.status === "zombie" ? "#4a3a20" : "#204a2a", padding: "1px 5px", borderRadius: "3px", background: l.status === "dead" ? "#1a0808" : l.status === "zombie" ? "#1a1208" : "#081a0a" }}>{T.status[l.status]}</span>
               </div>
               <div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#aaa", marginTop: "2px" }}>{l.year} · {l.channels.length}ch</div>
               <div style={{ display: "flex", gap: "3px", marginTop: "4px" }}>{l.channels.map((c) => <span key={c.id} style={{ fontSize: "15px", opacity: on ? 1 : .25 }}>{c.icon}</span>)}</div>
@@ -579,12 +664,12 @@ export default function App() {
       {lang && (
         <div style={{ padding: "0 16px 60px", animation: "fadeIn .35s" }}>
           <div style={{ display: "flex", gap: "8px", alignItems: "baseline", marginBottom: "10px", flexWrap: "wrap" }}>
-            <span className="sc-philosophy" style={{ fontFamily: "var(--serif)", fontSize: "20px", fontWeight: 300, fontStyle: "italic", color: "#aaa" }}>{lang.philosophy}</span>
-            <span style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#999" }}>{lang.author}</span>
+            <span className="sc-philosophy" style={{ fontFamily: "var(--serif)", fontSize: "20px", fontWeight: 300, fontStyle: "italic", color: "#aaa" }}>{loc(lang.philosophy, ui)}</span>
+            <span style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#999" }}>{loc(lang.author, ui)}</span>
           </div>
 
           <div style={{ display: "flex", marginBottom: "10px" }}>
-            {[{ k: "sample", l: `${lang.ext} sample` }, { k: "custom", l: "свой код ✎" }].map((m) => (
+            {[{ k: "sample", l: `${lang.ext} sample` }, { k: "custom", l: T.customCode }].map((m) => (
               <button key={m.k} onClick={() => { setMode(m.k); setOverrides({}); }} style={{ background: mode === m.k ? lang.color + "10" : "#080808", border: `1px solid ${mode === m.k ? lang.color + "35" : "#131313"}`, borderRadius: m.k === "sample" ? "4px 0 0 4px" : "0 4px 4px 0", padding: "5px 13px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "20px", color: mode === m.k ? lang.color : "#888" }}>{m.l}</button>
             ))}
           </div>
@@ -599,9 +684,9 @@ export default function App() {
                 </pre>
               ) : (
                 <div style={{ position: "relative" }}>
-                  <textarea value={custom} onChange={(e) => { setCustom(e.target.value); setOverrides({}); }} placeholder={`// Вставьте ${lang.name} код`} spellCheck={false}
+                  <textarea value={custom} onChange={(e) => { setCustom(e.target.value); setOverrides({}); }} placeholder={T.pastePlaceholder(lang.name)} spellCheck={false}
                     style={{ width: "100%", minHeight: "260px", resize: "vertical", background: "#111", border: `1px solid ${lang.color}18`, borderRadius: "6px", padding: "11px", fontFamily: "var(--mono)", fontSize: "15px", lineHeight: "1.6", color: "#bbb", whiteSpace: "pre", tabSize: 4 }} />
-                  {custom.trim() && <span style={{ position: "absolute", top: "4px", right: "8px", fontFamily: "var(--mono)", fontSize: "15px", color: lang.color + "44" }}>{custom.split("\n").filter((l) => l.trim()).length} lines</span>}
+                  {custom.trim() && <span style={{ position: "absolute", top: "4px", right: "8px", fontFamily: "var(--mono)", fontSize: "15px", color: lang.color + "44" }}>{custom.split("\n").filter((l) => l.trim()).length} {T.lines}</span>}
                 </div>
               )}
 
@@ -617,7 +702,7 @@ export default function App() {
                 </div>
               )}
               {analysis && analysis.smells.length === 0 && (
-                <div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#1a3a1a", padding: "6px 8px", background: "#060a06", borderRadius: "4px", border: "1px solid #0a1a0a" }}>✓ Код чист. CH4 молчит.</div>
+                <div style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#1a3a1a", padding: "6px 8px", background: "#060a06", borderRadius: "4px", border: "1px solid #0a1a0a" }}>{T.clean}</div>
               )}
             </div>
 
@@ -655,7 +740,7 @@ export default function App() {
       {!lang && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "44px 16px", animation: "fadeIn .5s" }}>
           <p style={{ fontFamily: "var(--serif)", fontSize: "20px", fontWeight: 300, color: "#888", fontStyle: "italic", textAlign: "center", lineHeight: "1.9" }}>
-            Мёртвые языки нельзя запустить.<br />Но можно вдохнуть.
+            {T.tagline[0]}<br />{T.tagline[1]}
           </p>
           <p style={{ fontFamily: "var(--mono)", fontSize: "15px", color: "#888", letterSpacing: "4px", marginTop: "14px" }}>PYTHON · FORTRAN I · COBOL</p>
           <div style={{ display: "flex", gap: "4px", marginTop: "28px" }}>
@@ -671,7 +756,7 @@ export default function App() {
           <div style={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: "12px", padding: "32px 28px", maxWidth: "360px", textAlign: "center", pointerEvents: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>
             <div style={{ fontSize: "48px", marginBottom: "16px" }}>&#x1F4C7;</div>
             <p style={{ fontFamily: "var(--serif)", fontSize: "22px", color: "#e8e8e8", lineHeight: 1.5, marginBottom: "24px" }}>
-              Выберите язык программирования на аромадиффузоре и вставьте перфокарту в щель устройства в нижней части
+              {T.overlay}
             </p>
             <button onClick={() => setShowOverlay(false)} style={{ background: "#222", border: "2px solid #555", borderRadius: "8px", padding: "12px 48px", cursor: "pointer", fontFamily: "var(--mono)", fontSize: "20px", fontWeight: 700, color: "#e8e8e8", letterSpacing: "3px", transition: "all .2s" }}
               onMouseEnter={(e) => { e.target.style.background = "#333"; e.target.style.borderColor = "#888"; }}
